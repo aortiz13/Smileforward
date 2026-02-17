@@ -47,7 +47,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export default function WidgetContainer({ initialStep }: { initialStep?: Step } = {}) {
-    const [step, setStep] = useState<Step>(initialStep || "UPLOAD");
+    const [step, setStep] = useState<Step>(initialStep || "LEAD_FORM");
     const [isVerified, setIsVerified] = useState(false);
     const [image, setImage] = useState<File | null>(null);
     // State for generated image URL
@@ -301,7 +301,50 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
 
             // Allow a brief moment for the 'complete' state to show before transitioning
             await new Promise(r => setTimeout(r, 800));
-            setStep("LOCKED_RESULT");
+
+            // AUTO-FLOW: If we already have a leadId (captured at start), save and show result
+            if (leadId) {
+                try {
+                    // 1. Save Generation
+                    const supabase = createClient();
+                    const { error: genError } = await supabase.from('generations').insert({
+                        lead_id: leadId,
+                        type: 'image',
+                        status: 'completed',
+                        input_path: uploadedScanUrl || 'unknown',
+                        output_path: genResult.data,
+                        metadata: { source: 'widget_v1' }
+                    });
+                    if (genError) console.error("Error saving generation:", genError);
+
+                    // 2. Send Email
+                    const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-photo-email`;
+                    await fetch(functionUrl, {
+                        method: 'POST',
+                        credentials: 'omit',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+                        },
+                        body: JSON.stringify({
+                            email: userEmail,
+                            name: "Usuario", // We might need to store name in state if we want it here, but email is critical
+                            imageUrl: genResult.data,
+                            leadId: leadId
+                        })
+                    }).catch(err => console.error('Email invoke error:', err));
+
+                    // 3. Go to Result
+                    setStep("RESULT");
+                } catch (autoErr) {
+                    console.error("Auto-save error:", autoErr);
+                    // Fallback to locked result if something fails
+                    setStep("LOCKED_RESULT");
+                }
+            } else {
+                // Legacy/Fallback: No lead captured yet
+                setStep("LOCKED_RESULT");
+            }
 
         } catch (err: any) {
             console.error("WidgetContainer Error:", err);
@@ -354,19 +397,6 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
 
             if (leadError) throw leadError;
 
-            // 2. Insert Generation Record (Linked to Lead)
-            if (generatedImage) {
-                const { error: genError } = await supabase.from('generations').insert({
-                    lead_id: leadId,
-                    type: 'image',
-                    status: 'completed',
-                    input_path: uploadedScanUrl || 'unknown',
-                    output_path: generatedImage,
-                    metadata: { source: 'widget_v1' }
-                });
-                if (genError) console.error("Error saving generation:", genError);
-            }
-
             toast.success("¡Información enviada con éxito!");
             setLeadId(leadId); // Persist ID for next step
             setUserEmail(data.email as string); // Store email for confirmation view
@@ -375,35 +405,54 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                 // Redirect to external URL for video appointment
                 window.location.href = 'https://dentalcorbella.com/contacto/';
             } else {
-                // Call email function
-                // Call email function
-                try {
-                    const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-photo-email`;
-                    const response = await fetch(functionUrl, {
-                        method: 'POST',
-                        credentials: 'omit', // Ignore cookies to prevent auth conflicts
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-                        },
-                        body: JSON.stringify({
-                            email: data.email as string,
-                            name: data.name as string,
-                            imageUrl: generatedImage,
-                            leadId: leadId
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        console.error('Email error:', errorData);
-                    }
-                } catch (emailErr) {
-                    console.error('Email invoke error:', emailErr);
+                // IF we are at the start (no generated image yet), go to UPLOAD
+                if (!generatedImage) {
+                    setStep("UPLOAD");
+                    return;
                 }
 
-                // Show email confirmation view
-                setStep("EMAIL_SENT");
+                // ELSE (Legacy Flow - Post Generation): Save, Email, Show Confirmation
+                if (generatedImage) {
+                    // 2. Insert Generation Record (Linked to Lead)
+                    const { error: genError } = await supabase.from('generations').insert({
+                        lead_id: leadId,
+                        type: 'image',
+                        status: 'completed',
+                        input_path: uploadedScanUrl || 'unknown',
+                        output_path: generatedImage,
+                        metadata: { source: 'widget_v1' }
+                    });
+                    if (genError) console.error("Error saving generation:", genError);
+
+                    // Call email function
+                    try {
+                        const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-photo-email`;
+                        const response = await fetch(functionUrl, {
+                            method: 'POST',
+                            credentials: 'omit', // Ignore cookies to prevent auth conflicts
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+                            },
+                            body: JSON.stringify({
+                                email: data.email as string,
+                                name: data.name as string,
+                                imageUrl: generatedImage,
+                                leadId: leadId
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            console.error('Email error:', errorData);
+                        }
+                    } catch (emailErr) {
+                        console.error('Email invoke error:', emailErr);
+                    }
+
+                    // Show email confirmation view
+                    setStep("EMAIL_SENT");
+                }
             }
         } catch (err) {
             console.error(err);
@@ -804,18 +853,25 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                 <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
                                     {/* Left Column - Title & Subtitle */}
                                     <div className="space-y-4 text-center md:text-left">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setStep("LOCKED_RESULT")}
-                                            className="text-zinc-500 hover:text-black dark:hover:text-white mb-4"
-                                        >
-                                            <Share2 className="w-4 h-4 mr-2 rotate-180" />
-                                            Volver al resultado
-                                        </Button>
-                                        <h2 className="text-2xl md:text-4xl font-serif font-bold text-black dark:text-white">¿Quieres que tu experiencia sea más real?</h2>
+                                        {generatedImage && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setStep("LOCKED_RESULT")}
+                                                className="text-zinc-500 hover:text-black dark:hover:text-white mb-4"
+                                            >
+                                                <Share2 className="w-4 h-4 mr-2 rotate-180" />
+                                                Volver al resultado
+                                            </Button>
+                                        )}
+                                        <h2 className="text-2xl md:text-3xl font-serif font-bold text-black dark:text-white">
+                                            {generatedImage ? "¿Quieres ver tu sonrisa real?" : "Comienza tu transformación"}
+                                        </h2>
                                         <p className="text-sm md:text-base text-zinc-500 leading-relaxed">
-                                            La imagen te da una idea. Pero donde realmente se entiende el cambio al verte hablar reir y expresarte: <span className="font-bold">verte tú</span> en situaciones reales con naturalidad
+                                            {generatedImage
+                                                ? <><span className="font-bold">Déjanos tus datos</span> para recibir tu diseño personalizado en alta calidad.</>
+                                                : "Completa tus datos para iniciar el diseño de tu nueva sonrisa con Inteligencia Artificial."
+                                            }
                                         </p>
                                     </div>
 
@@ -891,7 +947,7 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                                     variant="outline"
                                                     className="w-full h-12 rounded-full border-zinc-300 text-zinc-600 hover:text-black hover:bg-zinc-50 font-normal"
                                                 >
-                                                    Sólo quiero mi foto
+                                                    {generatedImage ? "Sólo quiero mi foto" : "Continuar con el diseño"}
                                                 </Button>
                                             </div>
                                         </form>
