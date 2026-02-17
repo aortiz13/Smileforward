@@ -64,39 +64,47 @@ Deno.serve(async (req) => {
                 <head>
                     <meta charset="utf-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
                     <style>
                         body {
-                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                             line-height: 1.6;
                             color: #333;
                             max-width: 600px;
                             margin: 0 auto;
                             padding: 20px;
+                            background-color: #ffffff;
                         }
                         .header {
                             text-align: center;
-                            padding: 30px 0;
+                            padding: 40px 0;
                             border-bottom: 2px solid #f0f0f0;
                         }
                         .logo {
-                            font-size: 28px;
-                            font-weight: 300;
-                            font-family: Georgia, serif;
+                            font-size: 32px;
+                            font-weight: 700;
+                            font-family: 'Playfair Display', Georgia, serif;
                             color: #000;
+                            letter-spacing: -0.5px;
                         }
                         .content {
-                            padding: 40px 0;
+                            padding: 50px 0;
                         }
                         p {
                             margin-bottom: 20px;
                             color: #444;
+                            font-size: 16px;
                         }
                         .footer {
                             text-align: center;
-                            padding: 30px 0;
+                            padding: 40px 0;
                             border-top: 2px solid #f0f0f0;
                             color: #999;
                             font-size: 14px;
+                        }
+                        strong {
+                            color: #000;
+                            font-weight: 700;
                         }
                     </style>
                 </head>

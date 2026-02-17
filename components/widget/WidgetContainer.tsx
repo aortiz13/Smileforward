@@ -1132,14 +1132,14 @@ export default function WidgetContainer({
                                     </div>
 
                                     <div className="space-y-4">
-                                        <h2 className="text-3xl font-serif font-bold text-black dark:text-white leading-tight">
+                                        <h2 className="text-3xl md:text-4xl font-serif font-bold text-black dark:text-white leading-tight">
                                             Solicitud enviada con éxito
                                         </h2>
-                                        <div className="space-y-2">
-                                            <p className="text-zinc-500 dark:text-zinc-400 text-lg">
+                                        <div className="space-y-3">
+                                            <p className="text-zinc-500 dark:text-zinc-400 text-lg md:text-xl font-sans">
                                                 Hemos enviado su foto al correo
                                             </p>
-                                            <p className="text-black dark:text-white font-semibold text-xl">
+                                            <p className="text-black dark:text-white font-bold text-xl md:text-2xl font-sans">
                                                 {userEmail}
                                             </p>
                                         </div>
@@ -1170,15 +1170,15 @@ export default function WidgetContainer({
                                     </div>
 
                                     <div className="space-y-6">
-                                        <h2 className="text-3xl font-serif font-bold text-black dark:text-white leading-tight">
+                                        <h2 className="text-3xl md:text-4xl font-serif font-bold text-black dark:text-white leading-tight">
                                             Solicitud enviada con éxito
                                         </h2>
-                                        <div className="space-y-4">
-                                            <p className="text-zinc-600 dark:text-zinc-400 text-lg leading-relaxed">
+                                        <div className="space-y-5">
+                                            <p className="text-zinc-600 dark:text-zinc-400 text-lg md:text-xl leading-relaxed font-sans">
                                                 Hemos recibido su solicitud y enviado su foto al correo <br />
-                                                <span className="font-semibold text-black dark:text-white">{userEmail}</span>
+                                                <span className="font-bold text-black dark:text-white text-xl md:text-2xl">{userEmail}</span>
                                             </p>
-                                            <p className="text-zinc-500 dark:text-zinc-400 text-base italic">
+                                            <p className="text-zinc-500 dark:text-zinc-400 text-base md:text-lg italic font-sans">
                                                 En breve nuestro equipo se pondrá en contacto con usted para coordinar su cita.
                                             </p>
                                         </div>
