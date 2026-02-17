@@ -73,11 +73,14 @@ export default function WidgetContainer({
     const [userId, setUserId] = useState<string>("anon");
     const [leadId, setLeadId] = useState<string | null>(null);
     const [userEmail, setUserEmail] = useState<string>('');
+    const [userName, setUserName] = useState<string>('Usuario'); // Store user name
 
     // Process Status State
     const [processStatus, setProcessStatus] = useState<ProcessStatus>('validating');
     const [uploadedScanUrl, setUploadedScanUrl] = useState<string | null>(null);
+
     const [isClinicalRequestSent, setIsClinicalRequestSent] = useState(false);
+    const [isPhotoEmailSent, setIsPhotoEmailSent] = useState(false); // Track manual email send staus
 
     // Cross-Device Session State
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -330,22 +333,9 @@ export default function WidgetContainer({
                     });
                     if (genError) console.error("Error saving generation:", genError);
 
-                    // 2. Send Email
-                    const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-photo-email`;
-                    await fetch(functionUrl, {
-                        method: 'POST',
-                        credentials: 'omit',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-                        },
-                        body: JSON.stringify({
-                            email: userEmail,
-                            name: "Usuario", // We might need to store name in state if we want it here, but email is critical
-                            imageUrl: genResult.data,
-                            leadId: leadId
-                        })
-                    }).catch(err => console.error('Email invoke error:', err));
+
+                    // 3. Go to Result
+
 
                     // 3. Go to Result
                     setStep("RESULT");
@@ -413,6 +403,7 @@ export default function WidgetContainer({
             toast.success("¡Información enviada con éxito!");
             setLeadId(leadId); // Persist ID for next step
             setUserEmail(data.email as string); // Store email for confirmation view
+            setUserName(data.name as string); // Store name
 
             if (leadIntent === 'video') {
                 // Redirect to external URL for video appointment
@@ -437,34 +428,9 @@ export default function WidgetContainer({
                     });
                     if (genError) console.error("Error saving generation:", genError);
 
-                    // Call email function
-                    try {
-                        const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-photo-email`;
-                        const response = await fetch(functionUrl, {
-                            method: 'POST',
-                            credentials: 'omit', // Ignore cookies to prevent auth conflicts
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-                            },
-                            body: JSON.stringify({
-                                email: data.email as string,
-                                name: data.name as string,
-                                imageUrl: generatedImage,
-                                leadId: leadId
-                            })
-                        });
-
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            console.error('Email error:', errorData);
-                        }
-                    } catch (emailErr) {
-                        console.error('Email invoke error:', emailErr);
-                    }
-
-                    // Show email confirmation view
-                    setStep("EMAIL_SENT");
+                    // Replaced automatic email with manual trigger in RESULT step
+                    // Show result directly
+                    setStep("RESULT");
                 }
             }
         } catch (err) {
@@ -507,6 +473,36 @@ export default function WidgetContainer({
         } catch (err) {
             console.error("Clinical request error:", err);
             toast.error("Error al enviar la solicitud. Por favor intenta de nuevo.");
+        }
+    };
+
+    const handleSendPhotoEmail = async () => {
+        try {
+            const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-photo-email`;
+            const response = await fetch(functionUrl, {
+                method: 'POST',
+                credentials: 'omit',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({
+                    email: userEmail,
+                    name: userName, // Use stored name
+                    imageUrl: generatedImage,
+                    leadId: leadId
+                })
+            });
+
+            if (response.ok) {
+                setIsPhotoEmailSent(true);
+                toast.success("Foto enviada correctamente");
+            } else {
+                console.error('Email error');
+            }
+        } catch (emailErr) {
+            console.error('Email invoke error:', emailErr);
+            toast.error("Error enviando el correo");
         }
     };
 
@@ -1086,6 +1082,26 @@ export default function WidgetContainer({
                                                     <div className="flex items-center justify-center gap-2 p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-2xl border border-green-100 dark:border-green-800 text-sm font-medium">
                                                         <Check className="w-5 h-5" />
                                                         Solicitud enviada con éxito
+                                                    </div>
+                                                )}
+
+                                                {!isPhotoEmailSent ? (
+                                                    <Button
+                                                        onClick={handleSendPhotoEmail}
+                                                        variant="outline"
+                                                        className="w-full h-12 rounded-full border-2 border-black dark:border-white text-black dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm font-medium tracking-wide shadow-sm"
+                                                    >
+                                                        Quiero recibir mi foto
+                                                    </Button>
+                                                ) : (
+                                                    <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800 text-center animate-in fade-in slide-in-from-bottom-2">
+                                                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                                                            Solicitud enviada con éxito
+                                                        </p>
+                                                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                                                            Hemos enviado su foto al correo <br />
+                                                            <span className="font-semibold">{userEmail}</span>
+                                                        </p>
                                                     </div>
                                                 )}
                                             </div>
