@@ -881,7 +881,7 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                         <h2 className="text-2xl md:text-3xl font-serif font-bold text-black dark:text-white">
                                             {generatedImage ? "¿Quieres ver tu sonrisa real?" : "Comienza tu transformación"}
                                         </h2>
-                                        <p className="text-sm md:text-base text-zinc-500 leading-relaxed">
+                                        <p className="text-sm md:text-base text-zinc-500 leading-[1.7]">
                                             {generatedImage
                                                 ? <><span className="font-bold">Déjanos tus datos</span> para recibir tu diseño personalizado en alta calidad.</>
                                                 : <>
@@ -909,7 +909,7 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
 
                                                 <div className="space-y-1.5">
                                                     <Label htmlFor="phone" className="text-xs uppercase tracking-wider text-zinc-400 pl-4">WhatsApp</Label>
-                                                    <div className="flex gap-3">
+                                                    <div className="flex items-center gap-3">
                                                         <div className="w-[110px] flex-shrink-0">
                                                             <Select
                                                                 name="countryCode"
@@ -943,22 +943,28 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-start space-x-3 px-2">
-                                                <Checkbox id="terms" required className="mt-1.5 rounded-full border-zinc-300 data-[state=checked]:bg-black data-[state=checked]:text-white w-5 h-5" />
-                                                <Label htmlFor="terms" className="text-sm text-zinc-500 font-normal leading-relaxed cursor-pointer">
-                                                    Confirmo que soy mayor de edad y acepto los <a href="/terminos-y-condiciones" target="_blank" rel="noopener noreferrer" className="text-black underline">términos y condiciones</a> y <a href="/politicas-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-black underline"> las políticas de privacidad</a>:
-                                                </Label>
+                                            <div className="space-y-4 px-2">
+                                                <div className="flex items-start space-x-3">
+                                                    <Checkbox id="age" required className="mt-0.5 rounded-full border-zinc-300 data-[state=checked]:bg-black data-[state=checked]:text-white w-5 h-5 flex-shrink-0" />
+                                                    <Label htmlFor="age" className="text-sm text-zinc-500 font-normal leading-relaxed cursor-pointer">
+                                                        Confirmo que soy mayor de edad.
+                                                    </Label>
+                                                </div>
+                                                <div className="flex items-start space-x-3">
+                                                    <Checkbox id="terms" required className="mt-0.5 rounded-full border-zinc-300 data-[state=checked]:bg-black data-[state=checked]:text-white w-5 h-5 flex-shrink-0" />
+                                                    <Label htmlFor="terms" className="text-sm text-zinc-500 font-normal leading-relaxed cursor-pointer">
+                                                        Acepto los <a href="/terminos-y-condiciones" target="_blank" rel="noopener noreferrer" className="text-black underline">términos y condiciones</a> y <a href="/politicas-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-black underline">las políticas de privacidad</a>.
+                                                    </Label>
+                                                </div>
                                             </div>
 
-                                            <div className="space-y-3 pt-2">
-
+                                            <div className="pt-2">
                                                 <Button
                                                     type="submit"
                                                     onClick={() => setLeadIntent('image')}
-                                                    variant="outline"
-                                                    className="w-full h-12 rounded-full border-zinc-300 text-zinc-600 hover:text-black hover:bg-zinc-50 font-normal"
+                                                    className="w-full h-14 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-base font-sans font-medium tracking-wide shadow-xl"
                                                 >
-                                                    {generatedImage ? "Sólo quiero mi foto" : "Continuar con el diseño"}
+                                                    {generatedImage ? "Recibir mi diseño" : "Continuar con el diseño"}
                                                 </Button>
                                             </div>
                                         </form>
@@ -1016,12 +1022,12 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                 className="h-full flex flex-col p-4 md:p-0"
                             >
                                 <div className="max-w-5xl mx-auto w-full space-y-8 flex flex-col items-center">
-                                    <h2 className="text-2xl md:text-4xl font-serif text-[#C44D4D] text-center">Tu simulación Smile Forward</h2>
+                                    <h2 className="text-2xl md:text-4xl font-serif text-black dark:text-white text-center">Tu simulación Smile Forward</h2>
 
                                     <div className="flex flex-col md:flex-row gap-10 w-full items-start justify-center">
                                         {/* Unified Slider Comparison */}
-                                        <div className="flex-1 w-full max-w-2xl">
-                                            <div className="relative aspect-[9/16] md:aspect-[4/3] rounded-2xl md:rounded-[2rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-xl group">
+                                        <div className="flex-none w-full max-w-sm">
+                                            <div className="relative aspect-[9/16] rounded-2xl md:rounded-[2rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-xl group">
                                                 {image && generatedImage ? (
                                                     <BeforeAfterSlider
                                                         beforeImage={URL.createObjectURL(image)}
