@@ -1035,10 +1035,20 @@ export default function WidgetContainer({
 
                                     <div className="flex flex-col md:flex-row gap-4 md:gap-8 w-full max-w-7xl items-center justify-center flex-1 min-h-0">
 
-                                        <div className="flex flex-col md:flex-row gap-10 w-full items-stretch justify-center">
+                                        <div className="flex flex-col md:flex-row gap-6 md:gap-10 w-full items-center justify-center">
+                                            {/* Mobile-only Header */}
+                                            <div className="md:hidden text-center space-y-2 mb-2">
+                                                <h3 className="text-2xl font-serif text-black dark:text-white leading-tight">
+                                                    Tu simulación Smile Forward <br /> ya está lista
+                                                </h3>
+                                                <p className="text-base text-zinc-600 leading-relaxed font-sans px-4">
+                                                    Aquí tienes una primera versión de como podría verse tu sonrisa ideal.
+                                                </p>
+                                            </div>
+
                                             {/* Unified Slider Comparison */}
                                             {/* Unified Slider Comparison */}
-                                            <div className="flex-none w-full md:w-auto min-h-[45vh] md:min-h-[55vh] aspect-[9/16] max-h-full transition-all duration-300">
+                                            <div className="flex-none w-auto h-[45vh] md:h-[55vh] aspect-[9/16] max-h-full transition-all duration-300 shadow-2xl rounded-2xl md:rounded-[2.5rem]">
                                                 <div className="relative h-full w-full rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl group">
                                                     {(image || demoBeforeImage) && generatedImage ? (
                                                         <BeforeAfterSlider
@@ -1056,54 +1066,60 @@ export default function WidgetContainer({
 
                                             {/* Sidebar CTA */}
                                             {/* Sidebar CTA */}
-                                            <div className="w-full md:w-[30rem] flex flex-col justify-center space-y-5 md:space-y-8 bg-zinc-50 dark:bg-zinc-900/50 p-6 md:p-10 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                                <div className="space-y-3 md:space-y-6">
-                                                    <h3 className="text-2xl md:text-4xl font-serif text-black dark:text-white leading-tight">
-                                                        Tu simulación Smile Forward ya está lista
-                                                    </h3>
-                                                    <p className="text-base md:text-xl text-zinc-600 leading-relaxed font-sans">
-                                                        Aquí tienes una primera versión de como podría verse tu sonrisa ideal.
-                                                    </p>
+                                            <div className="w-full md:w-[30rem] flex flex-col justify-center self-stretch space-y-5 md:space-y-8 text-center md:text-left">
+                                                <div className="space-y-2 md:space-y-3">
+                                                    {/* Desktop-only Header part */}
+                                                    <div className="hidden md:block space-y-3">
+                                                        <h3 className="text-3xl font-serif text-black dark:text-white leading-tight">
+                                                            Tu simulación Smile Forward <br /> ya está lista
+                                                        </h3>
+                                                        <p className="text-xl text-zinc-600 leading-relaxed font-sans">
+                                                            Aquí tienes una primera versión de como podría verse tu sonrisa ideal.
+                                                        </p>
+                                                    </div>
+
                                                     <p className="text-xs md:text-sm text-zinc-500 leading-relaxed font-sans opacity-90">
-                                                        Si quieres vivir la experiencia completa y verte en movimiento (video), lo realizamos en consulta para personalizar el resultado, confirmar la viabilidad en tu caso y orientarte sobre la mejor opción de tratamiento con el criterio del equipo de los Dres. Corbella.
+                                                        Si quieres vivir la experiencia completa y verte en <strong className="font-bold">movimiento (video)</strong>, lo realizamos en consulta para personalizar el resultado, confirmar la viabilidad en tu caso y orientarte sobre la mejor opción de tratamiento con el criterio del equipo de los Dres. Corbella.
                                                     </p>
                                                 </div>
 
-                                                {!isClinicalRequestSent ? (
-                                                    <Button
-                                                        onClick={handleClinicalVideoRequest}
-                                                        className="w-full h-14 md:h-16 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-sm md:text-lg font-sans font-medium tracking-wide shadow-xl gap-3 group px-6"
-                                                        size="lg"
-                                                    >
-                                                        <Video className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
-                                                        Quiero ver mi vídeo en consulta
-                                                    </Button>
-                                                ) : (
-                                                    <div className="flex items-center justify-center gap-2 p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-2xl border border-green-100 dark:border-green-800 text-sm font-medium">
-                                                        <Check className="w-5 h-5" />
-                                                        Solicitud enviada con éxito
-                                                    </div>
-                                                )}
-
-                                                {!isPhotoEmailSent ? (
-                                                    <Button
-                                                        onClick={handleSendPhotoEmail}
-                                                        variant="outline"
-                                                        className="w-full h-12 rounded-full border-2 border-black dark:border-white text-black dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm font-medium tracking-wide shadow-sm"
-                                                    >
-                                                        Quiero recibir mi foto
-                                                    </Button>
-                                                ) : (
-                                                    <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800 text-center animate-in fade-in slide-in-from-bottom-2">
-                                                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                                                <div className="space-y-4">
+                                                    {!isClinicalRequestSent ? (
+                                                        <Button
+                                                            onClick={handleClinicalVideoRequest}
+                                                            className="w-full h-14 md:h-16 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-sm md:text-lg font-sans font-medium tracking-wide shadow-xl gap-3 group px-6"
+                                                            size="lg"
+                                                        >
+                                                            <Video className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
+                                                            Quiero ver mi vídeo en consulta
+                                                        </Button>
+                                                    ) : (
+                                                        <div className="flex items-center justify-center gap-2 p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-2xl border border-green-100 dark:border-green-800 text-sm font-medium">
+                                                            <Check className="w-5 h-5" />
                                                             Solicitud enviada con éxito
-                                                        </p>
-                                                        <p className="text-xs text-blue-600 dark:text-blue-400">
-                                                            Hemos enviado su foto al correo <br />
-                                                            <span className="font-semibold">{userEmail}</span>
-                                                        </p>
-                                                    </div>
-                                                )}
+                                                        </div>
+                                                    )}
+
+                                                    {!isPhotoEmailSent ? (
+                                                        <Button
+                                                            onClick={handleSendPhotoEmail}
+                                                            variant="outline"
+                                                            className="w-full h-10 md:h-12 rounded-full border border-black dark:border-white text-black dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm font-normal tracking-wide shadow-sm"
+                                                        >
+                                                            Quiero recibir mi foto
+                                                        </Button>
+                                                    ) : (
+                                                        <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800 text-center animate-in fade-in slide-in-from-bottom-2">
+                                                            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                                                                Solicitud enviada con éxito
+                                                            </p>
+                                                            <p className="text-xs text-blue-600 dark:text-blue-400">
+                                                                Hemos enviado su foto al correo <br />
+                                                                <span className="font-semibold">{userEmail}</span>
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 
