@@ -46,12 +46,24 @@ const fileToBase64 = (file: File): Promise<string> => {
     });
 };
 
-export default function WidgetContainer({ initialStep }: { initialStep?: Step } = {}) {
+interface WidgetContainerProps {
+    initialStep?: Step;
+    initialBeforeImage?: string;
+    initialAfterImage?: string;
+}
+
+export default function WidgetContainer({
+    initialStep,
+    initialBeforeImage,
+    initialAfterImage
+}: WidgetContainerProps = {}) {
     const [step, setStep] = useState<Step>(initialStep || "LEAD_FORM");
     const [isVerified, setIsVerified] = useState(false);
     const [image, setImage] = useState<File | null>(null);
     // State for generated image URL
-    const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+    const [generatedImage, setGeneratedImage] = useState<string | null>(initialAfterImage || null);
+    // State for demo before image (string URL)
+    const [demoBeforeImage, setDemoBeforeImage] = useState<string | null>(initialBeforeImage || null);
     const [analysisId, setAnalysisId] = useState<string | null>(null); // New secure ID state
 
     // State for tracking user intent (image vs video/consultation)
@@ -809,7 +821,7 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                                 {image && generatedImage ? (
                                                     <div className="relative w-full h-full rounded-xl md:rounded-[2rem] overflow-hidden shadow-xl group sm:aspect-[9/16] md:aspect-auto">
                                                         <BeforeAfterSlider
-                                                            beforeImage={URL.createObjectURL(image)}
+                                                            beforeImage={image ? URL.createObjectURL(image) : (demoBeforeImage || "")}
                                                             afterImage={generatedImage}
                                                             className="w-full h-full"
                                                         />
@@ -1032,9 +1044,9 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                             {/* Unified Slider Comparison */}
                                             <div className="flex-none h-[50vh] md:h-[75vh] aspect-[9/16] max-h-full transition-all duration-300">
                                                 <div className="relative h-full w-full rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl group">
-                                                    {image && generatedImage ? (
+                                                    {(image || demoBeforeImage) && generatedImage ? (
                                                         <BeforeAfterSlider
-                                                            beforeImage={URL.createObjectURL(image)}
+                                                            beforeImage={image ? URL.createObjectURL(image) : (demoBeforeImage || "")}
                                                             afterImage={generatedImage}
                                                             className="w-full h-full"
                                                         />
@@ -1079,11 +1091,13 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                             </div>
                                         </div>
 
-                                        {/* Footer Disclaimer */}
-                                        <p className="text-[10px] md:text-sm text-zinc-400 text-center max-w-lg mx-auto leading-relaxed pt-2 md:pt-6 opacity-70">
-                                            Simulación Orientativa. El resultado final depende de tu caso clínico
-                                        </p>
                                     </div>
+
+                                    {/* Footer Disclaimer */}
+                                    <p className="text-[10px] md:text-sm text-zinc-400 text-center max-w-lg mx-auto leading-relaxed pt-2 md:pt-6 opacity-70">
+                                        Simulación Orientativa. El resultado final depende de tu caso clínico
+                                    </p>
+                                </div>
                             </motion.div>
                         )}
 
