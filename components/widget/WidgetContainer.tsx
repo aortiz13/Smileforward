@@ -55,8 +55,9 @@ interface WidgetContainerProps {
 export default function WidgetContainer({
     initialStep,
     initialBeforeImage,
-    initialAfterImage
-}: WidgetContainerProps = {}) {
+    initialAfterImage,
+    embed // 'widget' | null
+}: WidgetContainerProps & { embed?: string | null }) {
     const [step, setStep] = useState<Step>(initialStep || "LEAD_FORM");
     const [isVerified, setIsVerified] = useState(false);
     const [image, setImage] = useState<File | null>(null);
@@ -583,18 +584,21 @@ export default function WidgetContainer({
     );
 
     return (
-        <div className="relative h-auto md:h-[calc(100vh-100px)] min-h-[600px] w-full bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col font-sans overflow-hidden rounded-[2rem]">
+        <div className={`relative h-auto md:h-[calc(100vh-100px)] min-h-[600px] w-full ${embed === 'widget' ? 'bg-transparent border-none shadow-none' : 'bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm'} flex flex-col font-sans overflow-hidden rounded-[2rem]`}>
             {/* Header - Minimal with Serif Font */}
-            <div className="flex-none p-6 md:p-8 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md z-20">
-                <h1 className="text-xl md:text-2xl font-serif text-black dark:text-white tracking-tight">Smile Forward</h1>
-                {/* Subtle Status Indicator */}
-                <div className="flex items-center gap-2 px-3 py-1 bg-zinc-50 dark:bg-zinc-800 rounded-full border border-zinc-100 dark:border-zinc-700">
-                    <span className="relative flex h-2 w-2">
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
-                    </span>
-                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-sans tracking-widest uppercase">Online</span>
+            {/* Header - Minimal with Serif Font - Hidden in Widget Embed Mode */}
+            {embed !== 'widget' && (
+                <div className="flex-none p-6 md:p-8 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md z-20">
+                    <h1 className="text-xl md:text-2xl font-serif text-black dark:text-white tracking-tight">Smile Forward</h1>
+                    {/* Subtle Status Indicator */}
+                    <div className="flex items-center gap-2 px-3 py-1 bg-zinc-50 dark:bg-zinc-800 rounded-full border border-zinc-100 dark:border-zinc-700">
+                        <span className="relative flex h-2 w-2">
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+                        </span>
+                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-sans tracking-widest uppercase">Online</span>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* FULL SCREEN LOADING OVERLAY */}
             <AnimatePresence>

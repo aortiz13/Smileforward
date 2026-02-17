@@ -99,7 +99,7 @@ function HomeContent() {
 
           <Card className={`${isWidgetMode ? 'border-none shadow-none rounded-none h-full bg-transparent' : 'relative border border-zinc-100 dark:border-zinc-800 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden bg-white dark:bg-zinc-900 rounded-[2rem]'}`}>
             <div className="p-0 h-full">
-              <WidgetContainer />
+              <WidgetContainer embed={embedMode} />
             </div>
           </Card>
         </section>
