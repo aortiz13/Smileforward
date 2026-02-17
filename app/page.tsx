@@ -25,7 +25,13 @@ function HomeContent() {
     if (browserLang === 'en') {
       setLang('en');
     }
-  }, []);
+
+    // FORCE TRANSPARENCY for iframe embedding
+    if (isWidgetMode) {
+      document.documentElement.style.setProperty('background', 'transparent', 'important');
+      document.body.style.setProperty('background', 'transparent', 'important');
+    }
+  }, [isWidgetMode]);
 
   const t = {
     es: {
