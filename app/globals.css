@@ -1,0 +1,183 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Editor's Note */
+@font-face {
+  font-family: 'Editors Note';
+  src: url('/fonts/Editor_sNote-Hairline.ttf') format('truetype');
+  font-weight: 100;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Editors Note';
+  src: url('/fonts/Editor_sNote-Thin.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Editors Note';
+  src: url('/fonts/Editor_sNote-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Editors Note';
+  src: url('/fonts/Editor_sNote-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Editors Note';
+  src: url('/fonts/Editor_sNote-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Editors Note';
+  src: url('/fonts/Editor_sNote-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* Colaborate */
+@font-face {
+  font-family: 'Colaborate';
+  src: url('/fonts/ColabThi.otf') format('opentype');
+  font-weight: 100;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Colaborate';
+  src: url('/fonts/ColabLig.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Colaborate';
+  src: url('/fonts/ColabReg.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Colaborate';
+  src: url('/fonts/ColabMed.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Colaborate';
+  src: url('/fonts/ColabBol.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Brand Palette: Clean, Medical, Spa-like (Teal/Emerald/Slate)  :root {
+    /* Fondo #fafafa */
+  --background: 0 0% 98%;
+  /* Menú #333333 */
+  --foreground: 0 0% 20%;
+
+  /* Card could be white or same as background */
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 20%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 20%;
+
+  /* Botones #7f8b81 */
+  --primary: 133 6% 52%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Secondary #f0f0e7 */
+  --secondary: 72 18% 92%;
+  --secondary-foreground: 0 0% 20%;
+
+  /* Footer/Muted #cfd2cc */
+  --muted: 150 6% 81%;
+  --muted-foreground: 0 0% 40%;
+
+  /* Accent #b6b2a7 */
+  --accent: 43 8% 68%;
+  --accent-foreground: 0 0% 20%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 150 6% 81%;
+  --input: 150 6% 81%;
+  --ring: 133 6% 52%;
+
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 173 58% 39%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+
+  --accent: 173 58% 15%;
+  /* Dark Teal tint */
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 0 0% 40%;
+  --input: 0 0% 40%;
+  --ring: 132 5% 65%;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --font-serif: "Editors Note", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-sans: "Colaborate", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-serif);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
