@@ -1035,10 +1035,10 @@ export default function WidgetContainer({
 
                                     <div className="flex flex-col md:flex-row gap-4 md:gap-8 w-full max-w-7xl items-center justify-center flex-1 min-h-0">
 
-                                        <div className="flex flex-col md:flex-row gap-10 w-full items-start justify-center">
+                                        <div className="flex flex-col md:flex-row gap-10 w-full items-stretch justify-center">
                                             {/* Unified Slider Comparison */}
                                             {/* Unified Slider Comparison */}
-                                            <div className="flex-none h-[45vh] md:h-[55vh] aspect-[9/16] max-h-full transition-all duration-300">
+                                            <div className="flex-none w-full md:w-auto aspect-[9/16] max-h-full transition-all duration-300">
                                                 <div className="relative h-full w-full rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl group">
                                                     {(image || demoBeforeImage) && generatedImage ? (
                                                         <BeforeAfterSlider
