@@ -11,19 +11,35 @@ Deno.serve(async (req) => {
     }
 
     try {
-        const { email, name, leadId } = await req.json()
+        const { email, name, phone, leadId } = await req.json()
+        let leadPhone = phone;
 
         if (!email) {
             throw new Error('Email is required')
         }
 
-        // Send email using Resend
+        // Initialize Supabase if needed to fetch phone
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        const supabase = createClient(supabaseUrl, supabaseKey)
+
+        if (!leadPhone && leadId) {
+            const { data: leadData } = await supabase
+                .from('leads')
+                .select('phone')
+                .eq('id', leadId)
+                .single();
+            if (leadData) leadPhone = leadData.phone;
+        }
+
+        // Send confirmation email to user
         const resendApiKey = Deno.env.get('RESEND_API_KEY')
         if (!resendApiKey) {
             throw new Error('RESEND_API_KEY not configured')
         }
 
-        const emailResponse = await fetch('https://api.resend.com/emails', {
+        // 1. User Confirmation Email
+        const userEmailResponse = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${resendApiKey}`,
@@ -81,7 +97,7 @@ Deno.serve(async (req) => {
                         </div>
                         
                         <div class="content">
-                            <p>Estimado/a ${name || ''},</p>
+                            <p>Estimado/a ${name || 'Usuario'},</p>
                             
                             <p>Le agradecemos que haya solicitado su video en consulta. Hemos recibido correctamente su petición y en breve nuestro equipo se pondrá en contacto con usted para gestionar y confirmar la fecha y hora de su visita.</p>
                             
@@ -103,15 +119,48 @@ Deno.serve(async (req) => {
             })
         })
 
-        if (!emailResponse.ok) {
-            const errorText = await emailResponse.text()
-            console.error('Resend API error:', errorText)
-            throw new Error(`Failed to send email: ${errorText}`)
+        // 2. Admin Notification Email
+        const adminEmailResponse = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${resendApiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                from: 'Smile Forward Admin <noreply@brandboost-ai.com>',
+                to: ['serviciosmensualesadrian@gmail.com'],
+                subject: '🔴 Nueva Solicitud de Video/Consulta - Dental Corbella',
+                html: `
+                    <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                        <h2 style="color: #000;">Nueva solicitud de consulta para vídeo</h2>
+                        <p>Se ha recibido una nueva solicitud de un lead interesado en ver su simulación de sonrisa en consulta.</p>
+                        
+                        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <p><strong>Nombre:</strong> ${name || 'No proporcionado'}</p>
+                            <p><strong>Email:</strong> ${email}</p>
+                            <p><strong>Teléfono:</strong> ${leadPhone || 'No proporcionado'}</p>
+                            <p><strong>Lead ID:</strong> ${leadId || 'N/A'}</p>
+                        </div>
+                        
+                        <p style="color: #666; font-size: 14px;">Por favor, contacte con el paciente a la brevedad para coordinar la cita.</p>
+                    </div>
+                `,
+            })
+        })
+
+        if (!userEmailResponse.ok) {
+            const errorText = await userEmailResponse.text()
+            console.error('Resend User Email error:', errorText)
+        }
+
+        if (!adminEmailResponse.ok) {
+            const errorText = await adminEmailResponse.text()
+            console.error('Resend Admin Email error:', errorText)
         }
 
         return new Response(JSON.stringify({
             success: true,
-            message: "Email sent successfully"
+            message: "Emails processed"
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })

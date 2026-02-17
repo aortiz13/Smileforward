@@ -74,6 +74,7 @@ export default function WidgetContainer({
     const [leadId, setLeadId] = useState<string | null>(null);
     const [userEmail, setUserEmail] = useState<string>('');
     const [userName, setUserName] = useState<string>('Usuario'); // Store user name
+    const [userPhone, setUserPhone] = useState<string>(''); // Store user phone
 
     // Process Status State
     const [processStatus, setProcessStatus] = useState<ProcessStatus>('validating');
@@ -404,6 +405,7 @@ export default function WidgetContainer({
             setLeadId(leadId); // Persist ID for next step
             setUserEmail(data.email as string); // Store email for confirmation view
             setUserName(data.name as string); // Store name
+            setUserPhone(fullPhone.trim()); // Store phone
 
             if (leadIntent === 'video') {
                 // Redirect to external URL for video appointment
@@ -456,7 +458,8 @@ export default function WidgetContainer({
                 },
                 body: JSON.stringify({
                     email: userEmail,
-                    name: "Usuario", // In a real flow, we'd have the name from leadId lookup
+                    name: userName,
+                    phone: userPhone,
                     leadId: leadId
                 })
             });
