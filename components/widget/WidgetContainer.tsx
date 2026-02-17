@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { countries } from "./countries";
 
 // Combined step for auto-flow
-type Step = "UPLOAD" | "SELFIE_CAPTURE" | "PROCESSING" | "LOCKED_RESULT" | "LEAD_FORM" | "RESULT" | "SURVEY" | "VERIFICATION" | "EMAIL_SENT" | "CLINICAL_REQUEST_SUCCESS";
+type Step = "UPLOAD" | "SELFIE_CAPTURE" | "PROCESSING" | "LOCKED_RESULT" | "LEAD_FORM" | "RESULT" | "SURVEY" | "VERIFICATION" | "EMAIL_SENT" | "CLINICAL_REQUEST_SUCCESS" | "PHOTO_SUCCESS";
 
 // Status steps for the progress UI
 type ProcessStatus = 'validating' | 'scanning' | 'analyzing' | 'designing' | 'complete';
@@ -496,7 +496,8 @@ export default function WidgetContainer({
 
             if (response.ok) {
                 setIsPhotoEmailSent(true);
-                toast.success("Foto enviada correctamente");
+                setStep("PHOTO_SUCCESS");
+                // toast.success("Foto enviada correctamente"); // Navigating to screen instead
             } else {
                 console.error('Email error');
             }
@@ -1084,41 +1085,22 @@ export default function WidgetContainer({
                                                 </div>
 
                                                 <div className="space-y-4">
-                                                    {!isClinicalRequestSent ? (
-                                                        <Button
-                                                            onClick={handleClinicalVideoRequest}
-                                                            className="w-full h-14 md:h-16 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-sm md:text-lg font-sans font-medium tracking-wide shadow-xl gap-3 group px-6"
-                                                            size="lg"
-                                                        >
-                                                            <Video className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
-                                                            Quiero ver mi vídeo en consulta
-                                                        </Button>
-                                                    ) : (
-                                                        <div className="flex items-center justify-center gap-2 p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-2xl border border-green-100 dark:border-green-800 text-sm font-medium">
-                                                            <Check className="w-5 h-5" />
-                                                            Solicitud enviada con éxito
-                                                        </div>
-                                                    )}
+                                                    <Button
+                                                        onClick={handleClinicalVideoRequest}
+                                                        className="w-full h-14 md:h-16 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-sm md:text-lg font-sans font-medium tracking-wide shadow-xl gap-3 group px-6"
+                                                        size="lg"
+                                                    >
+                                                        <Video className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
+                                                        Quiero ver mi vídeo en consulta
+                                                    </Button>
 
-                                                    {!isPhotoEmailSent ? (
-                                                        <Button
-                                                            onClick={handleSendPhotoEmail}
-                                                            variant="outline"
-                                                            className="w-full h-10 md:h-12 rounded-full border border-black dark:border-white text-black dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm font-normal tracking-wide shadow-sm"
-                                                        >
-                                                            Quiero recibir mi foto
-                                                        </Button>
-                                                    ) : (
-                                                        <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800 text-center animate-in fade-in slide-in-from-bottom-2">
-                                                            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                                                                Solicitud enviada con éxito
-                                                            </p>
-                                                            <p className="text-xs text-blue-600 dark:text-blue-400">
-                                                                Hemos enviado su foto al correo <br />
-                                                                <span className="font-semibold">{userEmail}</span>
-                                                            </p>
-                                                        </div>
-                                                    )}
+                                                    <Button
+                                                        onClick={handleSendPhotoEmail}
+                                                        variant="outline"
+                                                        className="w-full h-10 md:h-12 rounded-full border border-black dark:border-white text-black dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm font-normal tracking-wide shadow-sm"
+                                                    >
+                                                        Quiero recibir mi foto
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1129,6 +1111,83 @@ export default function WidgetContainer({
                                     <p className="text-[10px] md:text-sm text-zinc-400 text-center max-w-lg mx-auto leading-relaxed pt-2 md:pt-6 opacity-70">
                                         Simulación Orientativa. El resultado final depende de tu caso clínico
                                     </p>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* PHOTO SUCCESS STEP */}
+                        {step === "PHOTO_SUCCESS" && (
+                            <motion.div
+                                key="photo-success"
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="h-full flex items-center justify-center p-4 md:p-8"
+                            >
+                                <div className="max-w-md w-full text-center space-y-8 p-10 bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl border border-zinc-100 dark:border-zinc-800">
+                                    <div className="w-20 h-20 mx-auto bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+                                        <Check className="w-10 h-10 text-green-500" strokeWidth={3} />
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <h2 className="text-3xl font-serif font-bold text-black dark:text-white leading-tight">
+                                            Solicitud enviada con éxito
+                                        </h2>
+                                        <div className="space-y-2">
+                                            <p className="text-zinc-500 dark:text-zinc-400 text-lg">
+                                                Hemos enviado su foto al correo
+                                            </p>
+                                            <p className="text-black dark:text-white font-semibold text-xl">
+                                                {userEmail}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        onClick={() => setStep("RESULT")}
+                                        variant="outline"
+                                        className="h-12 rounded-full px-8 border-zinc-200 text-zinc-600 hover:text-black hover:border-black transition-all"
+                                    >
+                                        Volver al resultado
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* CLINICAL REQUEST SUCCESS STEP */}
+                        {step === "CLINICAL_REQUEST_SUCCESS" && (
+                            <motion.div
+                                key="clinical-success"
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="h-full flex items-center justify-center p-4 md:p-8"
+                            >
+                                <div className="max-w-xl w-full text-center space-y-8 p-10 bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl border border-zinc-100 dark:border-zinc-800">
+                                    <div className="w-20 h-20 mx-auto bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+                                        <Check className="w-10 h-10 text-green-500" strokeWidth={3} />
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <h2 className="text-3xl font-serif font-bold text-black dark:text-white leading-tight">
+                                            Solicitud enviada con éxito
+                                        </h2>
+                                        <div className="space-y-4">
+                                            <p className="text-zinc-600 dark:text-zinc-400 text-lg leading-relaxed">
+                                                Hemos recibido su solicitud y enviado su foto al correo <br />
+                                                <span className="font-semibold text-black dark:text-white">{userEmail}</span>
+                                            </p>
+                                            <p className="text-zinc-500 dark:text-zinc-400 text-base italic">
+                                                En breve nuestro equipo se pondrá en contacto con usted para coordinar su cita.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        onClick={() => setStep("RESULT")}
+                                        variant="outline"
+                                        className="h-12 rounded-full px-8 border-zinc-200 text-zinc-600 hover:text-black hover:border-black transition-all"
+                                    >
+                                        Volver al resultado
+                                    </Button>
                                 </div>
                             </motion.div>
                         )}
