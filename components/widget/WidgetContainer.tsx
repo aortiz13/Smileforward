@@ -1032,17 +1032,17 @@ export default function WidgetContainer({
                                 key="result"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="h-screen w-full overflow-hidden flex flex-col justify-center bg-white dark:bg-zinc-950"
+                                className="h-full w-full overflow-hidden flex flex-col justify-center bg-white dark:bg-zinc-950"
                             >
-                                <div className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8">
+                                <div className="w-full h-full flex flex-col items-center justify-center p-4">
                                     {/* Removed outer title as requested */}
 
-                                    <div className="flex flex-col md:flex-row gap-6 md:gap-16 w-full max-w-7xl items-center justify-center flex-1 min-h-0">
+                                    <div className="flex flex-col md:flex-row gap-4 md:gap-8 w-full max-w-7xl items-center justify-center flex-1 min-h-0">
 
                                         <div className="flex flex-col md:flex-row gap-10 w-full items-start justify-center">
                                             {/* Unified Slider Comparison */}
                                             {/* Unified Slider Comparison */}
-                                            <div className="flex-none h-[50vh] md:h-[75vh] aspect-[9/16] max-h-full transition-all duration-300">
+                                            <div className="flex-none h-[50vh] md:h-[65vh] aspect-[9/16] max-h-full transition-all duration-300">
                                                 <div className="relative h-full w-full rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl group">
                                                     {(image || demoBeforeImage) && generatedImage ? (
                                                         <BeforeAfterSlider
