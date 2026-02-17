@@ -1144,14 +1144,7 @@ export default function WidgetContainer({
                                                 </div>
 
                                                 <div className="space-y-4">
-                                                    <Button
-                                                        onClick={handleClinicalVideoRequest}
-                                                        className="w-full h-14 md:h-16 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-sm md:text-lg font-sans font-medium tracking-wide shadow-xl gap-3 group px-6"
-                                                        size="lg"
-                                                    >
-                                                        <Video className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
-                                                        Quiero ver mi vídeo en consulta
-                                                    </Button>
+
 
                                                     <Button
                                                         onClick={handleClinicalVideoRequest}

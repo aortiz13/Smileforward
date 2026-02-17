@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
             .insert({
                 lead_id: lead_id,
                 type: 'video',
-                status: 'initializing',
+                status: 'processing',
                 metadata: {
                     scenario: finalScenario,
                     status_note: "Background process started"

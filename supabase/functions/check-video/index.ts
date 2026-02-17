@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
         const operationName = gen.metadata?.operation_name
 
         // If still initializing or missing operation name, it's still "pending" from the client perspective
-        if (gen.status === 'initializing' || !operationName) {
+        if (gen.status === 'processing' && !operationName) {
             return new Response(JSON.stringify({ status: 'pending', id: generation_id, message: 'Initializing generation...' }), { headers: corsHeaders })
         }
 
