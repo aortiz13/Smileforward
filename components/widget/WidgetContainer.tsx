@@ -1020,66 +1020,70 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                 key="result"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="h-full flex flex-col p-4 md:p-0"
+                                className="h-screen w-full overflow-hidden flex flex-col justify-center bg-white dark:bg-zinc-950"
                             >
-                                <div className="max-w-5xl mx-auto w-full space-y-8 flex flex-col items-center">
-                                    <h2 className="text-2xl md:text-4xl font-serif text-black dark:text-white text-center">Tu simulación Smile Forward</h2>
+                                <div className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8">
+                                    {/* Removed outer title as requested */}
 
-                                    <div className="flex flex-col md:flex-row gap-10 w-full items-start justify-center">
-                                        {/* Unified Slider Comparison */}
-                                        <div className="flex-none">
-                                            <div className="relative h-[55vh] md:h-[65vh] aspect-[9/16] rounded-2xl md:rounded-[2rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-xl group">
-                                                {image && generatedImage ? (
-                                                    <BeforeAfterSlider
-                                                        beforeImage={URL.createObjectURL(image)}
-                                                        afterImage={generatedImage}
-                                                        className="w-full h-full"
-                                                    />
+                                    <div className="flex flex-col md:flex-row gap-6 md:gap-16 w-full max-w-7xl items-center justify-center flex-1 min-h-0">
+
+                                        <div className="flex flex-col md:flex-row gap-10 w-full items-start justify-center">
+                                            {/* Unified Slider Comparison */}
+                                            {/* Unified Slider Comparison */}
+                                            <div className="flex-none h-[50vh] md:h-[75vh] aspect-[9/16] max-h-full transition-all duration-300">
+                                                <div className="relative h-full w-full rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl group">
+                                                    {image && generatedImage ? (
+                                                        <BeforeAfterSlider
+                                                            beforeImage={URL.createObjectURL(image)}
+                                                            afterImage={generatedImage}
+                                                            className="w-full h-full"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Sidebar CTA */}
+                                            {/* Sidebar CTA */}
+                                            <div className="w-full md:w-[30rem] flex flex-col justify-center space-y-5 md:space-y-8 bg-zinc-50 dark:bg-zinc-900/50 p-6 md:p-10 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                                <div className="space-y-3 md:space-y-6">
+                                                    <h3 className="text-2xl md:text-4xl font-serif text-black dark:text-white leading-tight">
+                                                        Tu simulación Smile Forward ya está lista
+                                                    </h3>
+                                                    <p className="text-base md:text-xl text-zinc-600 leading-relaxed font-sans">
+                                                        Aquí tienes una primera versión de como podría verse tu sonrisa ideal.
+                                                    </p>
+                                                    <p className="text-xs md:text-sm text-zinc-500 leading-relaxed font-sans opacity-90">
+                                                        Si quieres vivir la experiencia completa y verte en movimiento (video), lo realizamos en consulta para personalizar el resultado, confirmar la viabilidad en tu caso y orientarte sobre la mejor opción de tratamiento con el criterio del equipo de los Dres. Corbella.
+                                                    </p>
+                                                </div>
+
+                                                {!isClinicalRequestSent ? (
+                                                    <Button
+                                                        onClick={handleClinicalVideoRequest}
+                                                        className="w-full h-14 md:h-16 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-sm md:text-lg font-sans font-medium tracking-wide shadow-xl gap-3 group px-6"
+                                                        size="lg"
+                                                    >
+                                                        <Video className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
+                                                        Quiero ver mi vídeo en consulta
+                                                    </Button>
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center">
-                                                        <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
+                                                    <div className="flex items-center justify-center gap-2 p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-2xl border border-green-100 dark:border-green-800 text-sm font-medium">
+                                                        <Check className="w-5 h-5" />
+                                                        Solicitud enviada con éxito
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
 
-                                        {/* Sidebar CTA */}
-                                        <div className="w-full md:w-80 flex flex-col justify-center space-y-6 bg-zinc-50 dark:bg-zinc-900/50 p-8 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 self-center md:self-auto">
-                                            <div className="space-y-4">
-                                                <h3 className="text-xl md:text-2xl font-serif text-black dark:text-white leading-tight">
-                                                    Tu simulación Smile Forward ya está lista
-                                                </h3>
-                                                <p className="text-sm text-zinc-600 leading-relaxed font-sans">
-                                                    Aquí tienes una primera versión de como podría verse tu sonrisa ideal.
-                                                </p>
-                                                <p className="text-xs text-zinc-500 leading-relaxed font-sans">
-                                                    Si quieres vivir la experiencia completa y verte en movimiento(video), lo realizamos en consulta para personalizar el resultado, confirmar la viabilidad en tu caso y orientarte sobre la mejor opción de tratamiento con el criterio del equipo de los Dres. Corbella.
-                                                </p>
-                                            </div>
-
-                                            {!isClinicalRequestSent ? (
-                                                <Button
-                                                    onClick={handleClinicalVideoRequest}
-                                                    className="w-full h-14 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-sm md:text-base font-sans font-medium tracking-wide shadow-xl gap-2 group px-4"
-                                                    size="lg"
-                                                >
-                                                    <Video className="w-5 h-5 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
-                                                    quiero ver mi video en consulta
-                                                </Button>
-                                            ) : (
-                                                <div className="flex items-center justify-center gap-2 p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-2xl border border-green-100 dark:border-green-800 text-sm font-medium">
-                                                    <Check className="w-5 h-5" />
-                                                    Solicitud enviada con éxito
-                                                </div>
-                                            )}
-                                        </div>
+                                        {/* Footer Disclaimer */}
+                                        <p className="text-[10px] md:text-sm text-zinc-400 text-center max-w-lg mx-auto leading-relaxed pt-2 md:pt-6 opacity-70">
+                                            Simulación Orientativa. El resultado final depende de tu caso clínico
+                                        </p>
                                     </div>
-
-                                    {/* Footer Disclaimer */}
-                                    <p className="text-[10px] md:text-xs text-zinc-400 text-center max-w-md mx-auto leading-relaxed pt-4">
-                                        Simulación Orientativa. El resultado final depende de tu caso clínico
-                                    </p>
-                                </div>
                             </motion.div>
                         )}
 
