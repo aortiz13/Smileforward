@@ -65,6 +65,7 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
     // Process Status State
     const [processStatus, setProcessStatus] = useState<ProcessStatus>('validating');
     const [uploadedScanUrl, setUploadedScanUrl] = useState<string | null>(null);
+    const [isClinicalRequestSent, setIsClinicalRequestSent] = useState(false);
 
     // Cross-Device Session State
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -465,6 +466,37 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
         toast.info("Solicitud enviada.", { description: "Te contactaremos pronto." });
     };
 
+    const handleClinicalVideoRequest = async () => {
+        try {
+            const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/clinical-video-request`;
+            const response = await fetch(functionUrl, {
+                method: 'POST',
+                credentials: 'omit',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({
+                    email: userEmail,
+                    name: "Usuario", // In a real flow, we'd have the name from leadId lookup
+                    leadId: leadId
+                })
+            });
+
+            if (response.ok) {
+                setIsClinicalRequestSent(true);
+                toast.success("¡Solicitud enviada!", {
+                    description: "Revisa tu correo para confirmar los detalles."
+                });
+            } else {
+                throw new Error("Fallo al enviar solicitud");
+            }
+        } catch (err) {
+            console.error("Clinical request error:", err);
+            toast.error("Error al enviar la solicitud. Por favor intenta de nuevo.");
+        }
+    };
+
     const handleSurveySubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!leadId) return;
@@ -770,51 +802,33 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
 
                                     {/* Main Content - Images + CTA */}
                                     <div className="flex flex-col md:flex-row gap-4 md:gap-8 w-full items-center justify-center flex-1 min-h-0 overflow-hidden">
-                                        {/* Images Comparison */}
+                                        {/* Unified Slider Comparison */}
                                         <div className="flex-1 w-full max-w-xl h-full flex flex-col items-center gap-2 min-h-0">
-                                            <div className="grid grid-cols-2 gap-3 md:gap-6 w-full flex-1 min-h-0">
-                                                {/* ANTES */}
-                                                <div className="space-y-1 flex flex-col h-full min-h-0">
-                                                    <div className="flex-1 relative aspect-[9/16] md:aspect-auto rounded-xl md:rounded-[2rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-lg">
-                                                        {image && (
-                                                            <img src={URL.createObjectURL(image)} alt="Antes" className="w-full h-full object-cover" />
-                                                        )}
+                                            <div className="w-full flex-1 min-h-0 relative">
+                                                {image && generatedImage ? (
+                                                    <div className="relative w-full h-full rounded-xl md:rounded-[2rem] overflow-hidden shadow-xl group sm:aspect-[9/16] md:aspect-auto">
+                                                        <BeforeAfterSlider
+                                                            beforeImage={URL.createObjectURL(image)}
+                                                            afterImage={generatedImage}
+                                                            className="w-full h-full"
+                                                        />
+                                                        {/* Protective Watermark Layer */}
+                                                        <div className="absolute inset-0 flex items-center justify-center p-4 z-10 opacity-60 pointer-events-none">
+                                                            <img
+                                                                src="https://dentalcorbella.com/wp-content/uploads/2023/07/logo-white-trans2.png"
+                                                                alt="Watermark"
+                                                                className="w-full opacity-40 drop-shadow-md rotate-[-20deg] select-none"
+                                                                draggable={false}
+                                                            />
+                                                        </div>
+                                                        {/* Protective invisible layer */}
+                                                        <div className="absolute inset-0 z-20 bg-transparent pointer-events-none" />
                                                     </div>
-                                                    <p className="text-center font-sans font-bold text-zinc-400 tracking-widest text-[10px] md:text-xs flex-shrink-0">ANTES</p>
-                                                </div>
-
-                                                {/* DESPUES */}
-                                                <div className="space-y-1 flex flex-col h-full min-h-0">
-                                                    <div
-                                                        className="flex-1 relative aspect-[9/16] md:aspect-auto rounded-xl md:rounded-[2rem] overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-xl group select-none"
-                                                        onContextMenu={(e) => e.preventDefault()}
-                                                    >
-                                                        {generatedImage ? (
-                                                            <>
-                                                                {/* Background Image Representation - Using style to avoid direct src inspection easily */}
-                                                                <div
-                                                                    className="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-                                                                    style={{ backgroundImage: `url(${generatedImage})` }}
-                                                                    draggable={false}
-                                                                />
-                                                                {/* Watermark Overlay - No pointer-events-none here to intercept right clicks */}
-                                                                <div className="absolute inset-0 flex items-center justify-center p-4 z-10 opacity-60">
-                                                                    <img
-                                                                        src="https://dentalcorbella.com/wp-content/uploads/2023/07/logo-white-trans2.png"
-                                                                        alt="Watermark"
-                                                                        className="w-full opacity-40 drop-shadow-md rotate-[-20deg] select-none pointer-events-none"
-                                                                        draggable={false}
-                                                                    />
-                                                                </div>
-                                                                {/* Invisible protective layer to block "Copy Image" or similar browser features */}
-                                                                <div className="absolute inset-0 z-20 bg-transparent" />
-                                                            </>
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>
-                                                        )}
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-xl md:rounded-[2rem]">
+                                                        <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
                                                     </div>
-                                                    <p className="text-center font-sans font-bold text-zinc-600 dark:text-zinc-400 tracking-widest text-[10px] md:text-xs flex-shrink-0">DESPUÉS</p>
-                                                </div>
+                                                )}
                                             </div>
 
                                             {/* Footer Disclaimer - Centered below images */}
@@ -1005,47 +1019,52 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                     <h2 className="text-2xl md:text-4xl font-serif text-[#C44D4D] text-center">Tu simulación Smile Forward</h2>
 
                                     <div className="flex flex-col md:flex-row gap-10 w-full items-start justify-center">
-                                        {/* Images Comparison */}
+                                        {/* Unified Slider Comparison */}
                                         <div className="flex-1 w-full max-w-2xl">
-                                            <div className="grid grid-cols-2 gap-4 md:gap-6">
-                                                {/* ANTES */}
-                                                <div className="space-y-3">
-                                                    <div className="aspect-[9/16] rounded-2xl md:rounded-[2rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-lg">
-                                                        {image && (
-                                                            <img src={URL.createObjectURL(image)} alt="Antes" className="w-full h-full object-cover" />
-                                                        )}
+                                            <div className="relative aspect-[9/16] md:aspect-[4/3] rounded-2xl md:rounded-[2rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-xl group">
+                                                {image && generatedImage ? (
+                                                    <BeforeAfterSlider
+                                                        beforeImage={URL.createObjectURL(image)}
+                                                        afterImage={generatedImage}
+                                                        className="w-full h-full"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
                                                     </div>
-                                                    <p className="text-center font-sans font-bold text-zinc-400 tracking-widest text-xs md:text-sm">ANTES</p>
-                                                </div>
-
-                                                {/* DESPUES */}
-                                                <div className="space-y-3">
-                                                    <div className="relative aspect-[9/16] rounded-2xl md:rounded-[2rem] overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-xl group">
-                                                        {generatedImage ? (
-                                                            <img src={generatedImage} alt="Despues" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-zinc-300" /></div>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-center font-sans font-bold text-[#C44D4D] tracking-widest text-xs md:text-sm">DESPUÉS</p>
-                                                </div>
+                                                )}
                                             </div>
                                         </div>
 
                                         {/* Sidebar CTA */}
                                         <div className="w-full md:w-80 flex flex-col justify-center space-y-6 bg-zinc-50 dark:bg-zinc-900/50 p-8 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 self-center md:self-auto">
-                                            <div className="space-y-2">
-                                                <h3 className="text-2xl font-serif text-black dark:text-white">Simulación lista</h3>
-                                                <p className="text-sm text-zinc-500">Ahora puedes generar un vídeo personalizado para ver el cambio en movimiento.</p>
+                                            <div className="space-y-4">
+                                                <h3 className="text-xl md:text-2xl font-serif text-black dark:text-white leading-tight">
+                                                    Tu simulación Smile Forward ya está lista
+                                                </h3>
+                                                <p className="text-sm text-zinc-600 leading-relaxed font-sans">
+                                                    Aquí tienes una primera versión de como podría verse tu sonrisa ideal.
+                                                </p>
+                                                <p className="text-xs text-zinc-500 leading-relaxed font-sans">
+                                                    Si quieres vivir la experiencia completa y verte en movimiento(video), lo realizamos en consulta para personalizar el resultado, confirmar la viabilidad en tu caso y orientarte sobre la mejor opción de tratamiento con el criterio del equipo de los Dres. Corbella.
+                                                </p>
                                             </div>
 
-                                            <Button
-                                                onClick={() => setStep("SURVEY")}
-                                                className="w-full h-14 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-base font-sans font-medium tracking-wide shadow-xl gap-2 group"
-                                                size="lg"
-                                            >
-                                                <Video className="w-5 h-5 group-hover:scale-110 transition-transform" strokeWidth={1.5} /> Generar Video Simulación
-                                            </Button>
+                                            {!isClinicalRequestSent ? (
+                                                <Button
+                                                    onClick={handleClinicalVideoRequest}
+                                                    className="w-full h-14 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-sm md:text-base font-sans font-medium tracking-wide shadow-xl gap-2 group px-4"
+                                                    size="lg"
+                                                >
+                                                    <Video className="w-5 h-5 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
+                                                    quiero ver mi video en consulta
+                                                </Button>
+                                            ) : (
+                                                <div className="flex items-center justify-center gap-2 p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-2xl border border-green-100 dark:border-green-800 text-sm font-medium">
+                                                    <Check className="w-5 h-5" />
+                                                    Solicitud enviada con éxito
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 

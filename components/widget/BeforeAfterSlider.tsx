@@ -73,7 +73,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                 draggable={false}
             />
 
-            <div className="absolute top-4 right-4 bg-black/50 text-white px-2 py-1 rounded text-xs font-bold pointer-events-none z-10">
+            <div className="absolute top-4 right-4 bg-[#C44D4D] text-white px-2 py-1 rounded text-xs font-bold pointer-events-none z-10">
                 DESPUÉS
             </div>
 
