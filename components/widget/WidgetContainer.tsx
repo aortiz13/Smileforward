@@ -83,6 +83,11 @@ export default function WidgetContainer({
     const [isClinicalRequestSent, setIsClinicalRequestSent] = useState(false);
     const [isPhotoEmailSent, setIsPhotoEmailSent] = useState(false); // Track manual email send staus
 
+    // Loading States
+    const [isSubmittingPhoto, setIsSubmittingPhoto] = useState(false);
+    const [isSubmittingVideo, setIsSubmittingVideo] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState("Completando tu solicitud...");
+
     // Cross-Device Session State
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [qrUrl, setQrUrl] = useState<string | null>(null);
@@ -447,6 +452,14 @@ export default function WidgetContainer({
     };
 
     const handleClinicalVideoRequest = async () => {
+        setIsSubmittingVideo(true);
+        setLoadingMessage("Completando tu solicitud...");
+
+        // Timeout for "Ya casi..." message
+        const timeoutId = setTimeout(() => {
+            setLoadingMessage("Ya casi...");
+        }, 3000);
+
         try {
             const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/clinical-video-request`;
             const response = await fetch(functionUrl, {
@@ -476,10 +489,21 @@ export default function WidgetContainer({
         } catch (err) {
             console.error("Clinical request error:", err);
             toast.error("Error al enviar la solicitud. Por favor intenta de nuevo.");
+        } finally {
+            clearTimeout(timeoutId);
+            setIsSubmittingVideo(false);
         }
     };
 
     const handleSendPhotoEmail = async () => {
+        setIsSubmittingPhoto(true);
+        setLoadingMessage("Completando tu solicitud...");
+
+        // Timeout for "Ya casi..." message
+        const timeoutId = setTimeout(() => {
+            setLoadingMessage("Ya casi...");
+        }, 3000);
+
         try {
             const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-photo-email`;
             const response = await fetch(functionUrl, {
@@ -503,10 +527,14 @@ export default function WidgetContainer({
                 // toast.success("Foto enviada correctamente"); // Navigating to screen instead
             } else {
                 console.error('Email error');
+                throw new Error("Email sending failed");
             }
         } catch (emailErr) {
             console.error('Email invoke error:', emailErr);
             toast.error("Error enviando el correo");
+        } finally {
+            clearTimeout(timeoutId);
+            setIsSubmittingPhoto(false);
         }
     };
 
@@ -567,6 +595,34 @@ export default function WidgetContainer({
                     <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-sans tracking-widest uppercase">Online</span>
                 </div>
             </div>
+
+            {/* FULL SCREEN LOADING OVERLAY */}
+            <AnimatePresence>
+                {(isSubmittingPhoto || isSubmittingVideo) && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+                    >
+                        <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-2xl border border-zinc-100 dark:border-zinc-800 max-w-sm w-full space-y-6">
+                            <div className="relative w-16 h-16 mx-auto">
+                                <div className="absolute inset-0 rounded-full border-4 border-zinc-100 dark:border-zinc-800"></div>
+                                <div className="absolute inset-0 rounded-full border-4 border-black dark:border-white border-t-transparent animate-spin"></div>
+                                <Sparkles className="absolute inset-0 m-auto w-6 h-6 text-black dark:text-white animate-pulse" />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-serif font-bold text-black dark:text-white">
+                                    {loadingMessage}
+                                </h3>
+                                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                    Estamos procesando tu solicitud...
+                                </p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Main Content Area - Scrollable if needed but mostly constrained */}
             <main className={`flex-1 relative overflow-y-auto overflow-x-hidden ${step === 'RESULT' ? 'p-0' : 'p-6 md:p-10'} scrollbar-hide flex flex-col`}>
@@ -1098,11 +1154,38 @@ export default function WidgetContainer({
                                                     </Button>
 
                                                     <Button
+                                                        onClick={handleClinicalVideoRequest}
+                                                        disabled={isSubmittingVideo || isSubmittingPhoto}
+                                                        className="w-full h-14 md:h-16 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-sm md:text-lg font-sans font-medium tracking-wide shadow-xl gap-3 group px-6 transition-all"
+                                                        size="lg"
+                                                    >
+                                                        {isSubmittingVideo ? (
+                                                            <>
+                                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                                Enviando...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Video className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
+                                                                Quiero ver mi vídeo en consulta
+                                                            </>
+                                                        )}
+                                                    </Button>
+
+                                                    <Button
                                                         onClick={handleSendPhotoEmail}
+                                                        disabled={isSubmittingPhoto || isSubmittingVideo}
                                                         variant="outline"
                                                         className="w-full h-10 md:h-12 rounded-full border border-black dark:border-white text-black dark:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm font-normal tracking-wide shadow-sm"
                                                     >
-                                                        Quiero recibir mi foto
+                                                        {isSubmittingPhoto ? (
+                                                            <>
+                                                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                                                Enviando...
+                                                            </>
+                                                        ) : (
+                                                            "Quiero recibir mi foto"
+                                                        )}
                                                     </Button>
                                                 </div>
                                             </div>
