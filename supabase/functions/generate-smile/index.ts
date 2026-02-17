@@ -185,6 +185,23 @@ Deno.serve(async (req) => {
             .from('generated')
             .getPublicUrl(fileName);
 
+        // --- OPTIMIZATION: Fire-and-Forget Watermarking ---
+        // We trigger the watermark function but DO NOT await it.
+        // This allows the UI to get the result immediately.
+        console.log("Triggering background watermark...");
+        const watermarkUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/watermark-image`;
+        fetch(watermarkUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}` // Using Google Key as generic secret or better use service role if possible, but anon key works for invoked functions if RLS allows or we use internal
+            },
+            body: JSON.stringify({
+                image_path: fileName,
+                original_public_url: publicUrl
+            })
+        }).catch(err => console.error("Background watermark trigger failed:", err));
+
         return new Response(JSON.stringify({
             success: true,
             public_url: publicUrl

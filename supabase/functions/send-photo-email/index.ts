@@ -24,49 +24,42 @@ Deno.serve(async (req) => {
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         const supabase = createClient(supabaseUrl, supabaseKey)
 
-        // Download the image from Supabase Storage
-        const imagePath = imageUrl.split('/').pop() // Extract filename from URL
-        const { data: imageData, error: downloadError } = await supabase
+        // --- OPTIMIZATION: Use Pre-processed Watermarked Image ---
+        const imagePath = imageUrl.split('/').pop() // Extract uploaded filename
+        const watermarkedPath = imagePath.replace('.jpg', '_watermarked.jpg');
+
+        console.log(`Attempting to download watermarked image: ${watermarkedPath}`);
+
+        // Try to download watermarked version first
+        let imageToDownload = watermarkedPath;
+        let { data: imageData, error: downloadError } = await supabase
             .storage
             .from('generated')
-            .download(imagePath)
+            .download(watermarkedPath)
 
+        // Fallback: If watermarked doesn't exist (race condition?), try original
         if (downloadError) {
-            console.error('Download error:', downloadError)
-            throw new Error(`Failed to download image: ${downloadError.message}`)
+            console.warn(`Watermarked image not found (${downloadError.message}), falling back to original: ${imagePath}`);
+            imageToDownload = imagePath;
+            const originalResult = await supabase
+                .storage
+                .from('generated')
+                .download(imagePath);
+
+            if (originalResult.error) {
+                console.error('Download error:', originalResult.error)
+                throw new Error(`Failed to download image: ${originalResult.error.message}`)
+            }
+            imageData = originalResult.data;
         }
 
         // Convert image to base64 for email attachment
         const arrayBuffer = await imageData.arrayBuffer()
         const uint8Array = new Uint8Array(arrayBuffer)
+        const processedBase64 = encodeBase64(uint8Array);
 
-        // Add Watermark using Jimp
-        let processedBuffer = arrayBuffer;
-        try {
-            console.log('Adding watermark...')
-            const Jimp = (await import("https://esm.sh/jimp@0.22.12")).default;
-
-            const image = await Jimp.read(Buffer.from(uint8Array));
-            const logoUrl = 'https://dentalcorbella.com/wp-content/uploads/2023/07/logo-white-trans2.png';
-            const logoResponse = await fetch(logoUrl);
-            if (logoResponse.ok) {
-                const logoBuffer = await logoResponse.arrayBuffer();
-                const logo = await Jimp.read(Buffer.from(new Uint8Array(logoBuffer)));
-                const targetLogoWidth = image.bitmap.width * 0.3;
-                logo.resize(targetLogoWidth, Jimp.AUTO);
-                logo.opacity(0.4);
-                const margin = 40;
-                const x = image.bitmap.width - logo.bitmap.width - margin;
-                const y = image.bitmap.height - logo.bitmap.height - margin;
-                image.composite(logo, x, y);
-                processedBuffer = await image.getBufferAsync(Jimp.MIME_JPEG);
-                console.log('Watermark added successfully');
-            }
-        } catch (jimpError) {
-            console.error('Error adding watermark, sending original:', jimpError);
-        }
-
-        const processedBase64 = encodeBase64(processedBuffer);
+        // Note: We removed the Jimp/Cloudinary block here because 
+        // the watermarking is now done async in 'watermark-image' function.
 
         // Send email using SMTP
         const smtpHostname = Deno.env.get('SMTP_HOSTNAME')
