@@ -212,6 +212,17 @@ function SelfiePageContent() {
                     )}
                 </div>
             )}
+
+            <div className="flex flex-col items-center mt-6 text-center z-10">
+                <a
+                    href="https://dentalcorbella.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white/50 hover:text-white text-sm font-light tracking-wide transition-colors duration-300"
+                >
+                    Visitar Dental Corbella
+                </a>
+            </div>
         </div>
     );
 }
