@@ -569,7 +569,7 @@ export default function WidgetContainer({
             </div>
 
             {/* Main Content Area - Scrollable if needed but mostly constrained */}
-            <main className="flex-1 relative overflow-y-auto overflow-x-hidden p-6 md:p-10 scrollbar-hide flex flex-col">
+            <main className={`flex-1 relative overflow-y-auto overflow-x-hidden ${step === 'RESULT' ? 'p-0' : 'p-6 md:p-10'} scrollbar-hide flex flex-col`}>
                 {!isVerified ? (
                     <div className="flex-1 flex flex-col items-center justify-center space-y-6 animate-in fade-in zoom-in duration-500">
                         <div className="text-center space-y-2">
@@ -1042,7 +1042,7 @@ export default function WidgetContainer({
                                         <div className="flex flex-col md:flex-row gap-10 w-full items-start justify-center">
                                             {/* Unified Slider Comparison */}
                                             {/* Unified Slider Comparison */}
-                                            <div className="flex-none h-[50vh] md:h-[65vh] aspect-[9/16] max-h-full transition-all duration-300">
+                                            <div className="flex-none h-[45vh] md:h-[55vh] aspect-[9/16] max-h-full transition-all duration-300">
                                                 <div className="relative h-full w-full rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl group">
                                                     {(image || demoBeforeImage) && generatedImage ? (
                                                         <BeforeAfterSlider
