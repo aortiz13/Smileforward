@@ -870,7 +870,7 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                         <p className="text-sm md:text-base text-zinc-500 leading-relaxed">
                                             {generatedImage
                                                 ? <><span className="font-bold">Déjanos tus datos</span> para recibir tu diseño personalizado en alta calidad.</>
-                                                : "Completa tus datos para iniciar el diseño de tu nueva sonrisa con Inteligencia Artificial."
+                                                : "Completa tus datos para iniciar el diseño de tu nueva sonrisa. Debes ser mayor de edad para utilizar esta herramienta."
                                             }
                                         </p>
                                     </div>
