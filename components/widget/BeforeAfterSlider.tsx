@@ -64,6 +64,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
             className={`relative w-full aspect-[9/16] overflow-hidden select-none cursor-ew-resize group ${className}`}
             onMouseDown={handleStart}
             onTouchStart={handleStart}
+            onContextMenu={(e) => e.preventDefault()}
         >
             {/* After Image (Background - The New Smile) */}
             <img
@@ -72,6 +73,16 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                 className="absolute inset-0 w-full h-full object-cover"
                 draggable={false}
             />
+
+            {/* Watermark Overlay on 'After' Image */}
+            <div className="absolute inset-0 z-[5] pointer-events-none flex items-center justify-center overflow-hidden">
+                <img
+                    src="/watermark-logo.png"
+                    alt=""
+                    className="w-[120%] max-w-none opacity-[0.15] -rotate-45 object-contain select-none"
+                    draggable={false}
+                />
+            </div>
 
             <div className="absolute top-4 right-4 bg-[#C44D4D] text-white px-2 py-1 rounded text-xs font-bold pointer-events-none z-10">
                 DESPUÉS

@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { countries } from "./countries";
 
 // Combined step for auto-flow
-type Step = "UPLOAD" | "SELFIE_CAPTURE" | "PROCESSING" | "LOCKED_RESULT" | "LEAD_FORM" | "RESULT" | "SURVEY" | "VERIFICATION" | "EMAIL_SENT";
+type Step = "UPLOAD" | "SELFIE_CAPTURE" | "PROCESSING" | "LOCKED_RESULT" | "LEAD_FORM" | "RESULT" | "SURVEY" | "VERIFICATION" | "EMAIL_SENT" | "CLINICAL_REQUEST_SUCCESS";
 
 // Status steps for the progress UI
 type ProcessStatus = 'validating' | 'scanning' | 'analyzing' | 'designing' | 'complete';
@@ -485,6 +485,7 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
 
             if (response.ok) {
                 setIsClinicalRequestSent(true);
+                setStep("CLINICAL_REQUEST_SUCCESS");
                 toast.success("¡Solicitud enviada!", {
                     description: "Revisa tu correo para confirmar los detalles."
                 });
