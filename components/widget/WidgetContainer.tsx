@@ -1026,8 +1026,8 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
 
                                     <div className="flex flex-col md:flex-row gap-10 w-full items-start justify-center">
                                         {/* Unified Slider Comparison */}
-                                        <div className="flex-none w-full max-w-sm">
-                                            <div className="relative aspect-[9/16] rounded-2xl md:rounded-[2rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-xl group">
+                                        <div className="flex-none">
+                                            <div className="relative h-[55vh] md:h-[65vh] aspect-[9/16] rounded-2xl md:rounded-[2rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-xl group">
                                                 {image && generatedImage ? (
                                                     <BeforeAfterSlider
                                                         beforeImage={URL.createObjectURL(image)}
