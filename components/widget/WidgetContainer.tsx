@@ -932,18 +932,11 @@ export default function WidgetContainer({ initialStep }: { initialStep?: Step } 
                                             <div className="flex items-start space-x-3 px-2">
                                                 <Checkbox id="terms" required className="mt-1.5 rounded-full border-zinc-300 data-[state=checked]:bg-black data-[state=checked]:text-white w-5 h-5" />
                                                 <Label htmlFor="terms" className="text-sm text-zinc-500 font-normal leading-relaxed cursor-pointer">
-                                                    Acepto recibir mi diseño y la política de privacidad.
+                                                    Confirmo que soy mayor de edad y acepto los <a href="/terminos-y-condiciones" target="_blank" rel="noopener noreferrer" className="text-black underline">términos y condiciones</a> y <a href="/politicas-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-black underline"> las políticas de privacidad</a>:
                                                 </Label>
                                             </div>
 
                                             <div className="space-y-3 pt-2">
-                                                <Button
-                                                    type="submit"
-                                                    onClick={() => setLeadIntent('video')}
-                                                    className="w-full h-14 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-base font-sans font-medium tracking-wide shadow-lg"
-                                                >
-                                                    Reservar cita y verme en video
-                                                </Button>
 
                                                 <Button
                                                     type="submit"
