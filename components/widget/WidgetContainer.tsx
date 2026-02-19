@@ -8,7 +8,7 @@ import { Loader2, UploadCloud, Lock, Check, Video, PlayCircle, Sparkles, ScanFac
 import { toast } from "sonner";
 import { analyzeImageAndGeneratePrompts, generateSmileVariation } from "@/app/services/gemini";
 import { validateStaticImage } from "@/utils/faceValidation";
-import { uploadScan } from "@/app/services/storage";
+import { uploadScan, uploadGeneratedImage } from "@/app/services/storage";
 import { VariationType } from "@/types/gemini";
 import { alignGeneratedToReference } from "@/utils/alignFaces";
 import { Button } from "@/components/ui/button";
@@ -394,14 +394,20 @@ export default function WidgetContainer({
             // AUTO-FLOW: If we already have a leadId (captured at start), save and show result
             if (currentLeadId) {
                 try {
-                    // 1. Save Generation
+                    // 1. Upload Aligned image to storage (prevents RSC payload limit errors)
+                    let outputUrl = finalAlignedUrl;
+                    if (finalAlignedUrl?.startsWith('data:')) {
+                        outputUrl = await uploadGeneratedImage(finalAlignedUrl, currentLeadId, 'aligned');
+                    }
+
+                    // 2. Save Generation
                     const supabase = createClient();
                     const { error: genError } = await supabase.from('generations').insert({
                         lead_id: currentLeadId,
                         type: 'image',
                         status: 'completed',
                         input_path: localScanUrl || 'unknown',
-                        output_path: finalAlignedUrl,
+                        output_path: outputUrl,
                         metadata: { source: 'widget_v1' }
                     });
                     if (genError) console.error("Error saving generation:", genError);
