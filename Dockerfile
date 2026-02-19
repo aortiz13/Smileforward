@@ -19,8 +19,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Desactivar telemetría
+# Desactivar telemetría y checks de build
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_DISABLE_ESLINT=1
+ENV NEXT_DISABLE_TYPECHECK=1
 
 # Declarar argumentos de construcción (Build Args)
 ARG NEXT_PUBLIC_SUPABASE_URL

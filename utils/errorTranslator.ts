@@ -229,8 +229,13 @@ const USER_FRIENDLY_ERRORS: Record<string | number, ErrorConfig> = {
     }
 };
 
-function detectErrorType(error: any): string | number {
-    const errorString = typeof error === 'string' ? error : JSON.stringify(error);
+function detectErrorType(error: unknown): string | number {
+    if (error === null || error === undefined) return 'DEFAULT';
+
+    const errorString = typeof error === 'string'
+        ? error
+        : (error instanceof Error ? error.message : JSON.stringify(error));
+
     const errorLower = errorString.toLowerCase();
 
     const httpMatch = errorString.match(/\b(400|401|403|404|429|500|503|504)\b/);
@@ -286,7 +291,7 @@ function detectErrorType(error: any): string | number {
     return 'DEFAULT';
 }
 
-export function translateGeminiError(error: any) {
+export function translateGeminiError(error: unknown) {
     const errorType = detectErrorType(error);
     const errorConfig = USER_FRIENDLY_ERRORS[errorType] || USER_FRIENDLY_ERRORS.DEFAULT;
 
@@ -313,7 +318,9 @@ export function translateGeminiError(error: any) {
 }
 
 export function handleGeminiResponse(response: any) {
-    if (!response || !response.candidates || response.candidates.length === 0) {
+    // Note: response here comes from @google/genai and its structure is complex. 
+    // Keeping any for now but adding basic checks.
+    if (!response || !response.candidates || (response.candidates as any).length === 0) {
         return translateGeminiError('No response from API');
     }
 

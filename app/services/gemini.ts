@@ -28,6 +28,7 @@ const getMimeType = (base64: string): string => {
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const isModelOverloaded = (error: any): boolean => {
+    // Keeping any for error objects from SDK as they are deeply nested
     return (
         error.status === 'UNAVAILABLE' ||
         error.code === 503 ||
@@ -401,17 +402,11 @@ export const generateVeoVideo = async (
             const blob = await response.blob();
             mimeType = blob.type;
 
-            data = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                // Node.js FileReader polyfill or use ArrayBuffer
-                // Since this is Server Action (Node env), FileReader might not exist or work same.
-                // Better to use arrayBuffer and Buffer.from
-                resolve(""); // Placeholder if we need to fix this logic for Node
-            });
-
-            // FIX for Node environment:
+            // Node.js environment: use ArrayBuffer directly instead of FileReader
             const arrayBuffer = await blob.arrayBuffer();
             data = Buffer.from(arrayBuffer).toString('base64');
+
+            // data is set above
 
         } catch (e: any) {
             console.error("Failed to fetch remote image for Veo:", e);
@@ -487,8 +482,9 @@ export const generateVeoVideo = async (
 
         return `data:video/mp4;base64,${vidBase64}`;
 
-    } catch (error: any) {
-        console.error("Veo generation error:", error);
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("Veo generation error:", message);
         throw error;
     }
 };

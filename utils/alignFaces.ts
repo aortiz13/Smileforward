@@ -93,7 +93,7 @@ async function detectLandmarks(
         y: raw[idx].y * H,
     });
 
-    const midpoint = (indices: number[]) => {
+    const midpoint = (indices: readonly number[]) => {
         const p1 = px(indices[0]);
         const p2 = px(indices[1]);
         return {
@@ -104,8 +104,8 @@ async function detectLandmarks(
 
     return {
         points: [
-            midpoint(LM.LEFT_EYE as any),
-            midpoint(LM.RIGHT_EYE as any),
+            midpoint(LM.LEFT_EYE),
+            midpoint(LM.RIGHT_EYE),
             px(LM.NOSE_TIP),
             px(LM.MOUTH_LEFT),
             px(LM.MOUTH_RIGHT)
@@ -192,12 +192,13 @@ export async function alignGeneratedToReference(
 
         return { alignedUrl, success: true };
 
-    } catch (err: any) {
-        console.warn("[alignFaces] V3 alignment failed:", err?.message);
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.warn("[alignFaces] V3 alignment failed:", message);
         return {
             alignedUrl: generatedUrl,
             success: false,
-            error: err?.message ?? "Unknown error",
+            error: message,
         };
     }
 }
