@@ -81,3 +81,39 @@ export const uploadGeneratedImage = async (imageUrlOrBase64: string, userId: str
     }
 };
 
+/**
+ * Server Action for high-res uploads using FormData.
+ * This prevents RSC serialization limits for large base64 strings.
+ */
+export const uploadGeneratedImageAction = async (formData: FormData): Promise<string> => {
+    try {
+        const file = formData.get('file') as File;
+        const userId = formData.get('userId') as string;
+        const type = formData.get('type') as string || 'aligned';
+
+        if (!file || !userId) {
+            console.error("[Storage] Missing file or userId in FormData");
+            return "";
+        }
+
+        const supabase = await createClient();
+        const fileName = `${userId}/${Date.now()}_${type}.png`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('generated')
+            .upload(fileName, file, {
+                contentType: 'image/png'
+            });
+
+        if (uploadError) {
+            console.error("Failed to upload generated image via Action:", uploadError);
+            return "";
+        }
+
+        const { data } = supabase.storage.from('generated').getPublicUrl(fileName);
+        return data.publicUrl;
+    } catch (error) {
+        console.error("Critical Error in uploadGeneratedImageAction:", error);
+        return "";
+    }
+};

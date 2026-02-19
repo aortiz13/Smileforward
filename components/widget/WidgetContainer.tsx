@@ -8,10 +8,24 @@ import { Loader2, UploadCloud, Lock, Check, Video, PlayCircle, Sparkles, ScanFac
 import { toast } from "sonner";
 import { analyzeImageAndGeneratePrompts, generateSmileVariation } from "@/app/services/gemini";
 import { validateStaticImage } from "@/utils/faceValidation";
-import { uploadScan, uploadGeneratedImage } from "@/app/services/storage";
+import { uploadScan, uploadGeneratedImage, uploadGeneratedImageAction } from "@/app/services/storage";
 import { VariationType } from "@/types/gemini";
 import { alignGeneratedToReference } from "@/utils/alignFaces";
 import { Button } from "@/components/ui/button";
+
+// Helper to convert base64 to File
+const base64ToFile = (base64: string, filename: string): File => {
+    const arr = base64.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+};
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -397,7 +411,12 @@ export default function WidgetContainer({
                     // 1. Upload Aligned image to storage (prevents RSC payload limit errors)
                     let outputUrl = finalAlignedUrl;
                     if (finalAlignedUrl?.startsWith('data:')) {
-                        outputUrl = await uploadGeneratedImage(finalAlignedUrl, currentLeadId, 'aligned');
+                        const file = base64ToFile(finalAlignedUrl, 'aligned_smile.png');
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        formData.append('userId', currentLeadId);
+                        formData.append('type', 'aligned');
+                        outputUrl = await uploadGeneratedImageAction(formData);
                     }
 
                     // 2. Save Generation
