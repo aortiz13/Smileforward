@@ -339,8 +339,6 @@ export default function WidgetContainer({
 
             setProcessStatus('analyzing');
 
-            setProcessStatus('analyzing');
-
             // 3. Analyze Image
             const analysisFormData = new FormData();
             if (localScanUrl) {
