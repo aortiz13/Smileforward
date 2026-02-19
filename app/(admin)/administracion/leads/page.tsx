@@ -69,9 +69,8 @@ export default function LeadsPage() {
             return;
         }
 
-        const headers = ["ID", "Fecha", "Nombre", "Email", "Teléfono", "Estado", "Rango Edad", "Objetivo", "Plazo", "Clínica"];
+        const headers = ["Fecha", "Nombre", "Email", "Teléfono", "Estado", "Rango Edad", "Objetivo", "Plazo", "Clínica"];
         const rows = leads.map(lead => [
-            lead.id,
             new Date(lead.created_at).toLocaleString(),
             `"${lead.name?.replace(/"/g, '""') || ''}"`,
             `"${lead.email?.replace(/"/g, '""') || ''}"`,
