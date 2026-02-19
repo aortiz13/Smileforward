@@ -152,11 +152,21 @@ export const validateImageStrict = async (base64Image: string): Promise<{ succes
 export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promise<{ success: boolean; data?: AnalysisResponse; error?: string; errorDetails?: any }> => {
     console.log("[Gemini] ENTRY: analyzeImageAndGeneratePrompts called (Edge Function Delegate).");
     try {
-        const file = formData.get('file') as File;
-        if (!file) return { success: false, error: "Missing file in FormData" };
+        const file = formData.get('file');
+        const imageUrl = formData.get('imageUrl') as string;
+        let data = "";
 
-        const arrayBuffer = await file.arrayBuffer();
-        const data = Buffer.from(arrayBuffer).toString('base64');
+        if (imageUrl && imageUrl.startsWith('http')) {
+            console.log("[Gemini] Fetching image from URL for analysis:", imageUrl);
+            const res = await fetch(imageUrl);
+            const arrayBuffer = await res.arrayBuffer();
+            data = Buffer.from(arrayBuffer).toString('base64');
+        } else if (file instanceof File) {
+            const arrayBuffer = await file.arrayBuffer();
+            data = Buffer.from(arrayBuffer).toString('base64');
+        } else {
+            return { success: false, error: "Missing file or imageUrl in FormData" };
+        }
 
         const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -275,17 +285,27 @@ export const generateSmileVariation = async (formData: FormData): Promise<{ succ
     console.log("[Gemini] generateSmileVariation STARTED (Edge Function Delegate)");
 
     try {
-        const file = formData.get('file') as File;
+        const file = formData.get('file');
+        const imageUrl = formData.get('imageUrl') as string;
         const variationPrompt = formData.get('variationPrompt') as string;
         const aspectRatio = (formData.get('aspectRatio') as any) || "1:1";
         const userId = formData.get('userId') as string || "anon";
         const analysisId = formData.get('analysisId') as string;
         const variationType = formData.get('variationType') as string;
 
-        if (!file) return { success: false, error: "Missing file in FormData" };
-
-        const arrayBuffer = await file.arrayBuffer();
-        const data = Buffer.from(arrayBuffer).toString('base64');
+        let data = "";
+        if (imageUrl && imageUrl.startsWith('http')) {
+            console.log("[Gemini] Fetching image from URL for generation:", imageUrl);
+            const res = await fetch(imageUrl);
+            const arrayBuffer = await res.arrayBuffer();
+            data = Buffer.from(arrayBuffer).toString('base64');
+        } else if (file instanceof File) {
+            const arrayBuffer = await file.arrayBuffer();
+            data = Buffer.from(arrayBuffer).toString('base64');
+        } else {
+            return { success: false, error: "Missing file or imageUrl in FormData" };
+        }
+        Broadway
 
         const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
