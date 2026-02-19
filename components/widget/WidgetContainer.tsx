@@ -339,10 +339,16 @@ export default function WidgetContainer({
 
             setProcessStatus('analyzing');
 
+            setProcessStatus('analyzing');
+
             // 3. Analyze Image
             const analysisFormData = new FormData();
-            const analysisFile = base64ToFile(base64, 'analysis_input.jpg');
-            analysisFormData.append('file', analysisFile);
+            if (localScanUrl) {
+                analysisFormData.append('imageUrl', localScanUrl);
+            } else {
+                const analysisFile = base64ToFile(base64, 'analysis_input.jpg');
+                analysisFormData.append('file', analysisFile);
+            }
 
             const analysisResponse = await analyzeImageAndGeneratePrompts(analysisFormData);
             if (!analysisResponse.success) {
@@ -373,8 +379,12 @@ export default function WidgetContainer({
 
             // Pass analysis_id and variation type to use server-side prompt construction
             const genFormData = new FormData();
-            const genFile = base64ToFile(base64, 'generation_input.jpg');
-            genFormData.append('file', genFile);
+            if (localScanUrl) {
+                genFormData.append('imageUrl', localScanUrl);
+            } else {
+                const genFile = base64ToFile(base64, 'generation_input.jpg');
+                genFormData.append('file', genFile);
+            }
             genFormData.append('variationPrompt', fallbackPrompt);
             genFormData.append('aspectRatio', "9:16");
             genFormData.append('userId', supabaseUserId);
