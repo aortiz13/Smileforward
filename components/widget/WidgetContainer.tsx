@@ -1422,6 +1422,13 @@ export default function WidgetContainer({
                     </AnimatePresence>
                 )}
             </main>
-        </div >
+
+            {/* Developer Attribution - Always Visible */}
+            <div className="absolute bottom-6 right-8 z-30 opacity-60 pointer-events-none select-none">
+                <span className="text-[9px] uppercase tracking-[0.1em] text-zinc-400 dark:text-zinc-500 font-medium">
+                    Desarrollado por Judez-Logic
+                </span>
+            </div>
+        </div>
     );
 }
