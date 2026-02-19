@@ -1044,7 +1044,7 @@ export default function WidgetContainer({
                                                         className="mt-0.5 rounded-full border-zinc-300 data-[state=checked]:bg-black data-[state=checked]:text-white w-5 h-5 flex-shrink-0"
                                                     />
                                                     <Label htmlFor="terms" className="text-sm text-zinc-500 font-normal leading-tight cursor-pointer">
-                                                        Acepto los <a href="https://dentalcorbella.com/terminos-y-condiciones-smile-forward/" target="_blank" rel="noopener noreferrer" className="text-black underline">términos</a> y <a href="https://dentalcorbella.com/terminos-y-condiciones-smile-forward/" target="_blank" rel="noopener noreferrer" className="text-black underline">privacidad</a>.
+                                                        Acepto los <a href="https://dentalcorbella.com/terminos-y-condiciones-smile-forward/" target="_blank" rel="noopener noreferrer" className="text-black underline">términos y condiciones </a> y la <a href="https://dentalcorbella.com/terminos-y-condiciones-smile-forward/" target="_blank" rel="noopener noreferrer" className="text-black underline"> política de privacidad</a>.
                                                     </Label>
                                                 </div>
                                             </div>
