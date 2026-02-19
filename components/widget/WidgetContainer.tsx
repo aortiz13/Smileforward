@@ -187,8 +187,8 @@ export default function WidgetContainer({
                 img.onload = () => {
                     const canvas = document.createElement("canvas");
                     const ctx = canvas.getContext("2d");
-                    const MAX_WIDTH = 5000;
-                    const MAX_HEIGHT = 5000;
+                    const MAX_WIDTH = 2000;
+                    const MAX_HEIGHT = 2000;
                     let width = img.width;
                     let height = img.height;
                     if (width > height) {

@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -25,8 +26,9 @@ Deno.serve(async (req) => {
             const { data: fileData, error: downloadError } = await supabase.storage.from('uploads').download(image_path)
             if (downloadError) throw new Error(`Download failed: ${downloadError.message}`)
 
+            // Convert to Base64 safely
             const arrayBuffer = await fileData.arrayBuffer()
-            base64Image = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+            base64Image = encodeBase64(arrayBuffer)
         }
 
         // --- PROMPT ENGINEERING STRATEGY ---

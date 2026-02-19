@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -35,9 +36,9 @@ Deno.serve(async (req) => {
                 if (downloadError) {
                     throw new Error(`Failed to download image: ${downloadError.message}`)
                 }
-                // Convert to Base64
+                // Convert to Base64 safely (Avoiding spread operator stack overflow)
                 const arrayBuffer = await fileData.arrayBuffer()
-                base64Image = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+                base64Image = encodeBase64(arrayBuffer)
             }
 
             // Prepare Gemini Request

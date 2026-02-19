@@ -205,32 +205,25 @@ export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promis
             };
         }
 
-        const text = await response.json(); // analyze-face returns the text content directly in JSON response body from previous step?
-        // Wait, analyze-face returns `new Response(analysis, ...)` which is text/string if analysis is string.
-        // Or if it returns JSON object?
-        // In my previous edit of analyze-face, it returns: `return new Response(analysisText, ...)`
-        // `analysisText` is the raw text from Gemini, which is likely a JSON string block (```json ... ```).
 
-        // So `await response.text()` or `await response.json()` depending on if it's quoted.
-        // Safe bet:
-        let rawText = "";
-        if (typeof text === 'string') {
-            rawText = text;
-        } else {
-            // If it parsed as JSON automatically, it might be the analysis object itself?
-            // Let's assume it might be raw text since we sent it as `new Response(analysisText)`.
-            // Actually `fetch` `response.json()` will fail if it's just a raw markdown string not valid JSON.
-            // But if Gemini returns JSON, it's valid JSON.
-            rawText = JSON.stringify(text);
+        const rawBody = await response.text();
+        let text: any;
+        try {
+            text = JSON.parse(rawBody);
+        } catch {
+            text = rawBody;
         }
+
+        const rawText = typeof text === 'string' ? text : JSON.stringify(text);
 
         await logAudit('AI_ANALYSIS_RESULT', { raw_text: rawText });
         await logApiUsage('GEMINI_VISION_ANALYSIS');
         const result = safeParseJSON(rawText) as AnalysisResponse;
 
         if (!result) {
-            // Try parsing directly if it was already an object
-            if (typeof text === 'object') return { success: true, data: text as AnalysisResponse };
+            if (typeof text === 'object' && text !== null) {
+                return { success: true, data: text as AnalysisResponse };
+            }
             throw new Error("Invalid JSON from AI");
         }
         return { success: true, data: result };
@@ -346,7 +339,15 @@ export const generateSmileVariation = async (formData: FormData): Promise<{ succ
         if (!response.ok) {
             const errText = await response.text();
             console.error("Edge Function Error:", errText);
-            const friendlyError = translateGeminiError(errText || response.status);
+
+            // Attempt to extract JSON error message if present
+            let errorMessage = errText;
+            try {
+                const errJson = JSON.parse(errText);
+                if (errJson.error) errorMessage = errJson.error;
+            } catch (e) { /* Fallback to raw text */ }
+
+            const friendlyError = translateGeminiError(errorMessage || response.status);
             return {
                 success: false,
                 error: friendlyError.message,

@@ -181,6 +181,43 @@ const USER_FRIENDLY_ERRORS: Record<string | number, ErrorConfig> = {
         retryDelay: 5000
     },
 
+    // ===== ERRORES BACKEND =====
+    DB_ERROR: {
+        title: "Error de Guardado",
+        message: "No pudimos asegurar tu sesión de análisis. Por favor, intenta de nuevo.",
+        suggestion: "Este es un problema del servidor",
+        icon: "💾",
+        canRetry: true
+    },
+    AI_PARSE_ERROR: {
+        title: "Error de Interpretación",
+        message: "La IA generó una respuesta que no pudimos procesar.",
+        suggestion: "Por favor, intenta de nuevo ahora mismo",
+        icon: "🧠",
+        canRetry: true
+    },
+    AI_NO_IMAGE: {
+        title: "Imagen no Generada",
+        message: "Por favor, sube una imagen diferente.",
+        suggestion: "Asegúrate de que tu cara sea clara y visible",
+        icon: "🖼️",
+        canRetry: true
+    },
+    MISSING_DATA: {
+        title: "Datos Incompletos",
+        message: "Faltan datos necesarios para procesar la imagen.",
+        suggestion: "Intenta refrescar la página",
+        icon: "📂",
+        canRetry: false
+    },
+    BIOMETRIC_FAIL: {
+        title: "Validación Fallida",
+        message: "La imagen no cumple con los requisitos clínicos.",
+        suggestion: "Intenta con una foto frontal y bien iluminada",
+        icon: "👤",
+        canRetry: true
+    },
+
     // Default fallback
     DEFAULT: {
         title: "Error inesperado",
@@ -238,6 +275,13 @@ function detectErrorType(error: any): string | number {
     if (errorLower.includes('blocked due to recitation')) {
         return 'RECITATION';
     }
+
+    // Backend specific failures
+    if (errorLower.includes('database error') || errorLower.includes('failed to secure analysis')) return 'DB_ERROR';
+    if (errorLower.includes('invalid json from ai')) return 'AI_PARSE_ERROR';
+    if (errorLower.includes('ai did not return an image')) return 'AI_NO_IMAGE';
+    if (errorLower.includes('missing file, path or imageurl')) return 'MISSING_DATA';
+    if (errorLower.includes('biometric') || errorLower.includes('rejection_reason')) return 'BIOMETRIC_FAIL';
 
     return 'DEFAULT';
 }
