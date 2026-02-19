@@ -305,7 +305,6 @@ export const generateSmileVariation = async (formData: FormData): Promise<{ succ
         } else {
             return { success: false, error: "Missing file or imageUrl in FormData" };
         }
-        Broadway
 
         const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
