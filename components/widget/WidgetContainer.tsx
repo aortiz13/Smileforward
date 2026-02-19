@@ -648,7 +648,7 @@ export default function WidgetContainer({
                                 className="h-full flex flex-col justify-center items-center text-center space-y-8"
                             >
                                 <div
-                                    className="group relative w-full aspect-[4/3] max-w-[280px] md:max-w-sm border border-dashed border-zinc-300 dark:border-zinc-700 rounded-[2rem] hover:border-teal-500/50 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-zinc-50/50 dark:bg-zinc-900/50"
+                                    className="group relative w-full aspect-square md:aspect-[4/3] max-w-[280px] md:max-w-sm border border-dashed border-zinc-300 dark:border-zinc-700 rounded-[2rem] hover:border-teal-500/50 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-zinc-50/50 dark:bg-zinc-900/50"
                                     onDragOver={(e) => e.preventDefault()}
                                     onDrop={(e) => {
                                         e.preventDefault();
@@ -1065,7 +1065,7 @@ export default function WidgetContainer({
                                         <div className="w-full space-y-3 mt-[30px]">
                                             {!selectedFile && !mobileConnected ? (
                                                 <div
-                                                    className="group relative w-full h-[70vh] md:h-auto md:aspect-[22/11.7] border border-dashed border-zinc-300 dark:border-zinc-700 rounded-[1.5rem] hover:border-black/50 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-zinc-50/50 dark:bg-zinc-900/50"
+                                                    className="group relative w-full aspect-square md:h-auto md:aspect-[22/11.7] border border-dashed border-zinc-300 dark:border-zinc-700 rounded-[1.5rem] hover:border-black/50 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-zinc-50/50 dark:bg-zinc-900/50"
                                                     onDragOver={(e) => e.preventDefault()}
                                                     onDrop={(e) => {
                                                         e.preventDefault();
@@ -1087,7 +1087,7 @@ export default function WidgetContainer({
                                                     />
                                                 </div>
                                             ) : selectedFile ? (
-                                                <div className="relative w-full h-[70vh] md:h-auto md:aspect-[22/11.7] flex justify-center">
+                                                <div className="relative w-full aspect-square md:h-auto md:aspect-[22/11.7] flex justify-center">
                                                     <div className="relative h-full aspect-square rounded-[1.5rem] overflow-hidden border border-zinc-200 dark:border-zinc-800">
                                                         <img src={URL.createObjectURL(selectedFile)} alt="Selected" className="w-full h-full object-cover" />
                                                         <Button
@@ -1101,7 +1101,7 @@ export default function WidgetContainer({
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="flex flex-col items-center justify-center w-full h-[70vh] md:h-auto md:aspect-[22/11.7] bg-zinc-50 dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 text-center p-4 space-y-2">
+                                                <div className="flex flex-col items-center justify-center w-full aspect-square md:h-auto md:aspect-[22/11.7] bg-zinc-50 dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 text-center p-4 space-y-2">
                                                     <Smartphone className="w-10 h-10 text-teal-500 animate-pulse" />
                                                     <p className="text-sm font-medium">Móvil conectado.</p>
                                                     <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => setMobileConnected(false)}>Cancelar</Button>
