@@ -149,10 +149,14 @@ export const validateImageStrict = async (base64Image: string): Promise<{ succes
 };
 
 // Analysis
-export const analyzeImageAndGeneratePrompts = async (base64Image: string): Promise<{ success: boolean; data?: AnalysisResponse; error?: string; errorDetails?: any }> => {
+export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promise<{ success: boolean; data?: AnalysisResponse; error?: string; errorDetails?: any }> => {
     console.log("[Gemini] ENTRY: analyzeImageAndGeneratePrompts called (Edge Function Delegate).");
     try {
-        const data = stripBase64Prefix(base64Image);
+        const file = formData.get('file') as File;
+        if (!file) return { success: false, error: "Missing file in FormData" };
+
+        const arrayBuffer = await file.arrayBuffer();
+        const data = Buffer.from(arrayBuffer).toString('base64');
 
         const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -267,18 +271,21 @@ export const validateGeneratedImage = async (base64Image: string): Promise<boole
 };
 
 // Generate Smile Variation
-export const generateSmileVariation = async (
-    inputImageBase64: string,
-    variationPrompt: string,
-    aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "1:1",
-    userId: string = "anon",
-    analysisId?: string, // NEW: Secure ID
-    variationType?: string // NEW: To select the variation from DB
-): Promise<{ success: boolean; data?: string; error?: string; errorDetails?: any }> => {
+export const generateSmileVariation = async (formData: FormData): Promise<{ success: boolean; data?: string; error?: string; errorDetails?: any }> => {
     console.log("[Gemini] generateSmileVariation STARTED (Edge Function Delegate)");
 
     try {
-        const data = stripBase64Prefix(inputImageBase64);
+        const file = formData.get('file') as File;
+        const variationPrompt = formData.get('variationPrompt') as string;
+        const aspectRatio = (formData.get('aspectRatio') as any) || "1:1";
+        const userId = formData.get('userId') as string || "anon";
+        const analysisId = formData.get('analysisId') as string;
+        const variationType = formData.get('variationType') as string;
+
+        if (!file) return { success: false, error: "Missing file in FormData" };
+
+        const arrayBuffer = await file.arrayBuffer();
+        const data = Buffer.from(arrayBuffer).toString('base64');
 
         const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

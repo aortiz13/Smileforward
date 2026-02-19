@@ -340,7 +340,11 @@ export default function WidgetContainer({
             setProcessStatus('analyzing');
 
             // 3. Analyze Image
-            const analysisResponse = await analyzeImageAndGeneratePrompts(base64);
+            const analysisFormData = new FormData();
+            const analysisFile = base64ToFile(base64, 'analysis_input.jpg');
+            analysisFormData.append('file', analysisFile);
+
+            const analysisResponse = await analyzeImageAndGeneratePrompts(analysisFormData);
             if (!analysisResponse.success) {
                 const error = analysisResponse.errorDetails;
                 toast.error(error?.title || "Error analizando imagen", {
@@ -368,14 +372,16 @@ export default function WidgetContainer({
             const fallbackPrompt = naturalVariation.prompt_data.Subject || "Smile Design";
 
             // Pass analysis_id and variation type to use server-side prompt construction
-            const genResult = await generateSmileVariation(
-                base64,
-                fallbackPrompt,
-                "9:16",
-                supabaseUserId,
-                analysisResult.analysis_id, // New param
-                VariationType.ORIGINAL_BG   // New param
-            );
+            const genFormData = new FormData();
+            const genFile = base64ToFile(base64, 'generation_input.jpg');
+            genFormData.append('file', genFile);
+            genFormData.append('variationPrompt', fallbackPrompt);
+            genFormData.append('aspectRatio', "9:16");
+            genFormData.append('userId', supabaseUserId);
+            if (analysisResult.analysis_id) genFormData.append('analysisId', analysisResult.analysis_id);
+            genFormData.append('variationType', VariationType.ORIGINAL_BG);
+
+            const genResult = await generateSmileVariation(genFormData);
 
             if (!genResult.success || !genResult.data) {
                 const error = genResult.errorDetails;
