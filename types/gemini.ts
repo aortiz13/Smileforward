@@ -1,11 +1,19 @@
 export type Logger = (message: string, type?: LogType) => void;
 export type LogType = 'info' | 'success' | 'error' | 'process' | 'warning';
 
+import { ErrorConfig } from "@/utils/errorTranslator";
+
 export interface LogEntry {
     id: string;
     timestamp: number;
     message: string;
     type: LogType;
+}
+
+export interface BaseResponse {
+    success: boolean;
+    error?: string;
+    errorDetails?: ReturnType<typeof import("@/utils/errorTranslator").translateGeminiError>;
 }
 
 export enum VariationType {

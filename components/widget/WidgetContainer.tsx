@@ -10,6 +10,7 @@ import { analyzeImageAndGeneratePrompts, generateSmileVariation } from "@/app/se
 import { validateStaticImage } from "@/utils/faceValidation";
 import { uploadScan } from "@/app/services/storage";
 import { VariationType } from "@/types/gemini";
+import { alignGeneratedToReference } from "@/utils/alignFaces";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +36,7 @@ import { countries } from "./countries";
 type Step = "UPLOAD" | "SELFIE_CAPTURE" | "PROCESSING" | "LOCKED_RESULT" | "LEAD_FORM" | "RESULT" | "SURVEY" | "VERIFICATION" | "EMAIL_SENT" | "CLINICAL_REQUEST_SUCCESS" | "PHOTO_SUCCESS";
 
 // Status steps for the progress UI
-type ProcessStatus = 'validating' | 'scanning' | 'analyzing' | 'designing' | 'complete';
+type ProcessStatus = 'idle' | 'validating' | 'scanning' | 'analyzing' | 'designing' | 'aligning' | 'complete';
 
 const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -77,8 +78,9 @@ export default function WidgetContainer({
     const [userPhone, setUserPhone] = useState<string>(''); // Store user phone
 
     // Process Status State
-    const [processStatus, setProcessStatus] = useState<ProcessStatus>('validating');
+    const [processStatus, setProcessStatus] = useState<ProcessStatus>('idle');
     const [uploadedScanUrl, setUploadedScanUrl] = useState<string | null>(null);
+    const [alignedImage, setAlignedImage] = useState<string | null>(null);
 
     const [isClinicalRequestSent, setIsClinicalRequestSent] = useState(false);
     const [isPhotoEmailSent, setIsPhotoEmailSent] = useState(false); // Track manual email send staus
@@ -92,6 +94,16 @@ export default function WidgetContainer({
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [qrUrl, setQrUrl] = useState<string | null>(null);
     const [mobileConnected, setMobileConnected] = useState(false);
+
+    // New states for unified flow
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [formValues, setFormValues] = useState({
+        name: '',
+        email: '',
+        phoneNumber: '',
+        ageAccepted: false,
+        termsAccepted: false
+    });
 
     const [phraseIndex, setPhraseIndex] = useState(0);
     const phrases = [
@@ -182,7 +194,8 @@ export default function WidgetContainer({
     };
 
     const handleSelfieCapture = async (file: File) => {
-        handleUpload(file);
+        setSelectedFile(file);
+        setStep("LEAD_FORM"); // Go back to the unified form view to show the "Quiero ver mi versión mejorada" button
     };
 
     // Initialize Selfie Session when entering that step
@@ -254,6 +267,33 @@ export default function WidgetContainer({
                 throw new Error(validation.reason || "Imagen no válida");
             }
 
+            // Before starting the upload/processing, we save the lead if it's not saved yet
+            let currentLeadId = leadId;
+            if (!currentLeadId) {
+                // If we don't have a leadId yet, we need to save it now
+                const supabase = createClient();
+                const newLeadId = crypto.randomUUID();
+
+                const countryDialCode = countries.find(c => c.code === selectedCountry)?.dial_code || '+34';
+                const fullPhone = `${countryDialCode} ${formValues.phoneNumber}`;
+
+                const { error: leadError } = await supabase.from('leads').insert({
+                    id: newLeadId,
+                    name: formValues.name,
+                    email: formValues.email,
+                    phone: fullPhone.trim(),
+                    status: 'pending'
+                });
+
+                if (leadError) throw leadError;
+
+                setLeadId(newLeadId);
+                currentLeadId = newLeadId;
+                setUserEmail(formValues.email);
+                setUserName(formValues.name);
+                setUserPhone(fullPhone.trim());
+            }
+
             // ONLY IF VALID, we move to processing state
             setImage(file);
             setStep("PROCESSING");
@@ -270,9 +310,9 @@ export default function WidgetContainer({
 
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
-            const currentUserId = user?.id || 'anon_' + crypto.randomUUID();
-            setUserId(currentUserId);
-            formData.append('userId', currentUserId);
+            const supabaseUserId = user?.id || 'anon_' + crypto.randomUUID();
+            setUserId(supabaseUserId);
+            formData.append('userId', supabaseUserId);
 
             const uploadRes = await uploadScan(formData);
             if (uploadRes.success && uploadRes.data) {
@@ -285,7 +325,14 @@ export default function WidgetContainer({
 
             // 3. Analyze Image
             const analysisResponse = await analyzeImageAndGeneratePrompts(base64);
-            if (!analysisResponse.success) throw new Error(analysisResponse.error || "Error analizando imagen");
+            if (!analysisResponse.success) {
+                const error = analysisResponse.errorDetails;
+                toast.error(error?.title || "Error analizando imagen", {
+                    description: error?.message,
+                    icon: error?.icon
+                });
+                throw new Error(analysisResponse.error || "Error analizando imagen");
+            }
 
             const analysisResult = analysisResponse.data;
             if (!analysisResult) throw new Error("No se pudo obtener el análisis.");
@@ -309,38 +356,51 @@ export default function WidgetContainer({
                 base64,
                 fallbackPrompt,
                 "9:16",
-                currentUserId,
+                supabaseUserId,
                 analysisResult.analysis_id, // New param
                 VariationType.ORIGINAL_BG   // New param
             );
 
             if (!genResult.success || !genResult.data) {
+                const error = genResult.errorDetails;
+                toast.error(error?.title || "Fallo en la generación", {
+                    description: error?.message,
+                    icon: error?.icon
+                });
                 throw new Error(genResult.error || "Fallo en la generación de sonrisa");
             }
 
             setGeneratedImage(genResult.data);
+
+            // 5. Align Faces (PRE-CALCULATION)
+            setProcessStatus('aligning');
+            const alignResult = await alignGeneratedToReference(base64, genResult.data);
+            if (alignResult.success) {
+                setAlignedImage(alignResult.alignedUrl);
+            } else {
+                console.warn("[WidgetContainer] Pre-alignment failed:", alignResult.error);
+                setAlignedImage(genResult.data); // Fallback to unaligned
+            }
+
             setProcessStatus('complete');
 
             // Allow a brief moment for the 'complete' state to show before transitioning
             await new Promise(r => setTimeout(r, 800));
 
             // AUTO-FLOW: If we already have a leadId (captured at start), save and show result
-            if (leadId) {
+            if (currentLeadId) {
                 try {
                     // 1. Save Generation
                     const supabase = createClient();
                     const { error: genError } = await supabase.from('generations').insert({
-                        lead_id: leadId,
+                        lead_id: currentLeadId,
                         type: 'image',
                         status: 'completed',
                         input_path: uploadedScanUrl || 'unknown',
-                        output_path: genResult.data,
+                        output_path: alignedImage || genResult.data,
                         metadata: { source: 'widget_v1' }
                     });
                     if (genError) console.error("Error saving generation:", genError);
-
-
-                    // 3. Go to Result
 
 
                     // 3. Go to Result
@@ -358,92 +418,27 @@ export default function WidgetContainer({
         } catch (err: any) {
             console.error("WidgetContainer Error:", err);
 
-            let displayError = err.message || "Ocurrió un error.";
-            if (
-                displayError.includes("AI did not return an image") ||
-                displayError.includes("AI did not return a video") ||
-                displayError.includes("safety filters")
-            ) {
-                displayError = "Por favor sube una imágen diferente";
+            // Generic fallback if toast wasn't already shown
+            if (!err.message.includes("analizando imagen") && !err.message.includes("generación de sonrisa")) {
+                toast.error("Ocurrió un error inesperado.");
             }
 
-            toast.error(displayError);
-
-            // Only reset to UPLOAD if we were already in PROCESSING
-            // If validation failed, IMAGE is still null and STEP is still UPLOAD/SELFIE_CAPTURE,
-            // so this just ensures we don't end up on a broken screen.
+            // Only reset to LEAD_FORM if we were already in PROCESSING
             setStep((prev) => {
-                if (prev === "PROCESSING") return "UPLOAD";
+                if (prev === "PROCESSING") return "LEAD_FORM";
                 return prev;
             });
             setImage(null);
+            setSelectedFile(null); // Reset selected file too
         }
     };
 
+    // Unified flow uses state-based validation and auto-saving in handleUpload
+    // So handleLeadSubmit is only needed for the 'video' intent if we ever restore that separate button
     const handleLeadSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const formData = new FormData(e.target as HTMLFormElement);
-        const data = Object.fromEntries(formData);
-
-        try {
-            const supabase = createClient();
-            const leadId = crypto.randomUUID(); // Client-side ID generation
-
-            // 1. Insert Lead
-            // Combine country code and phone number if available
-            const selectedCountryIso = (data.countryCode as string) || 'ES';
-            const countryDialCode = countries.find(c => c.code === selectedCountryIso)?.dial_code || '+34';
-            const phoneNumber = (data.phoneNumber as string) || (data.phone as string) || '';
-            const fullPhone = `${countryDialCode} ${phoneNumber}`;
-
-            const { error: leadError } = await supabase.from('leads').insert({
-                id: leadId,
-                name: (data.name as string),
-                email: (data.email as string),
-                phone: fullPhone.trim(),
-                status: 'pending'
-            });
-
-            if (leadError) throw leadError;
-
-            toast.success("¡Información enviada con éxito!");
-            setLeadId(leadId); // Persist ID for next step
-            setUserEmail(data.email as string); // Store email for confirmation view
-            setUserName(data.name as string); // Store name
-            setUserPhone(fullPhone.trim()); // Store phone
-
-            if (leadIntent === 'video') {
-                // Redirect to external URL for video appointment
-                window.location.href = 'https://dentalcorbella.com/contacto/';
-            } else {
-                // IF we are at the start (no generated image yet), go to UPLOAD
-                if (!generatedImage) {
-                    setStep("UPLOAD");
-                    return;
-                }
-
-                // ELSE (Legacy Flow - Post Generation): Save, Email, Show Confirmation
-                if (generatedImage) {
-                    // 2. Insert Generation Record (Linked to Lead)
-                    const { error: genError } = await supabase.from('generations').insert({
-                        lead_id: leadId,
-                        type: 'image',
-                        status: 'completed',
-                        input_path: uploadedScanUrl || 'unknown',
-                        output_path: generatedImage,
-                        metadata: { source: 'widget_v1' }
-                    });
-                    if (genError) console.error("Error saving generation:", genError);
-
-                    // Replaced automatic email with manual trigger in RESULT step
-                    // Show result directly
-                    setStep("RESULT");
-                }
-            }
-        } catch (err) {
-            console.error(err);
-            toast.error("Error guardando datos. Intenta de nuevo.");
-        }
+        // This is now partially redundant but kept for any specific legacy routing needs
+        // if we ever add a "Solamente enviar datos" button.
     };
 
     const handleVideoRequest = () => {
@@ -925,118 +920,215 @@ export default function WidgetContainer({
                             </motion.div>
                         )}
 
-                        {/* LEAD FORM - Clean & Minimal */}
+                        {/* UNIFIED LEAD FORM + UPLOAD STEP */}
                         {step === "LEAD_FORM" && (
                             <motion.div
                                 key="form"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className="h-full flex items-center justify-center p-4 md:p-8 overflow-y-auto"
+                                className="h-full flex items-start justify-center p-4 md:p-6 pt-[10px] overflow-hidden"
                             >
-                                <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
-                                    {/* Left Column - Title & Subtitle */}
-                                    <div className="space-y-4 text-center md:text-left">
-                                        {generatedImage && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setStep("LOCKED_RESULT")}
-                                                className="text-zinc-500 hover:text-black dark:hover:text-white mb-4"
-                                            >
-                                                <Share2 className="w-4 h-4 mr-2 rotate-180" />
-                                                Volver al resultado
-                                            </Button>
-                                        )}
-                                        <h2 className="text-2xl md:text-3xl font-serif font-bold text-black dark:text-white">
-                                            {generatedImage ? "¿Quieres ver tu sonrisa real?" : "Comienza tu transformación"}
-                                        </h2>
-                                        <p className="text-sm md:text-base text-zinc-500 leading-[1.7]">
-                                            {generatedImage
-                                                ? <><span className="font-bold">Déjanos tus datos</span> para recibir tu diseño personalizado en alta calidad.</>
-                                                : <>
-                                                    Completa tus datos para iniciar el diseño de tu nueva sonrisa.
-                                                    <br />
-                                                    Debes ser mayor de edad para utilizar esta herramienta.
-                                                </>
-                                            }
-                                        </p>
-                                    </div>
+                                <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-start">
+                                    {/* Left Column - PASO 1 Form */}
+                                    <div className="space-y-3">
+                                        <div className="space-y-2">
+                                            {generatedImage && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setStep("LOCKED_RESULT")}
+                                                    className="text-zinc-500 hover:text-black dark:hover:text-white mb-2 h-8"
+                                                >
+                                                    <Share2 className="w-4 h-4 mr-2 rotate-180" />
+                                                    Volver al resultado
+                                                </Button>
+                                            )}
+                                            <div className="inline-flex items-center rounded-full bg-black text-white px-3 py-0.5 text-[10px] uppercase tracking-widest font-sans font-bold">
+                                                Paso 1
+                                            </div>
+                                            <h2 className="text-xl md:text-3xl font-serif font-bold text-black dark:text-white leading-tight">
+                                                Comienza tu transformación
+                                            </h2>
+                                            <p className="text-sm text-zinc-500 leading-relaxed">
+                                                Completa tus datos para iniciar el diseño de tu nueva sonrisa.
+                                                <br />
+                                                Utilizaremos estos datos para enviarte la simulación.
+                                            </p>
 
-                                    {/* Right Column - Form */}
-                                    <div className="w-full">
-                                        <form className="space-y-6" onSubmit={handleLeadSubmit}>
-                                            <div className="space-y-5">
-                                                <div className="space-y-1.5">
-                                                    <Label htmlFor="name" className="text-xs uppercase tracking-wider text-zinc-400 pl-4">Nombre Completo</Label>
-                                                    <Input id="name" name="name" placeholder="Tu nombre" required className="h-12 border-zinc-200 bg-zinc-50 rounded-full px-6 focus:ring-0 focus:border-black transition-all" />
-                                                </div>
+                                        </div>
 
-                                                <div className="space-y-1.5">
-                                                    <Label htmlFor="email" className="text-xs uppercase tracking-wider text-zinc-400 pl-4">Correo Electrónico</Label>
-                                                    <Input id="email" name="email" type="email" placeholder="tu@email.com" required className="h-12 border-zinc-200 bg-zinc-50 rounded-full px-6 focus:ring-0 focus:border-black transition-all" />
-                                                </div>
+                                        <div className="w-full space-y-2.5 mt-[30px]">
+                                            <div className="space-y-1">
+                                                <Label htmlFor="name" className="text-xs uppercase tracking-wider text-zinc-400 pl-4">Nombre Completo</Label>
+                                                <Input
+                                                    id="name"
+                                                    name="name"
+                                                    placeholder="Tu nombre"
+                                                    value={formValues.name}
+                                                    onChange={(e) => setFormValues(prev => ({ ...prev, name: e.target.value }))}
+                                                    required
+                                                    className="h-11 border-zinc-200 bg-zinc-50 rounded-full px-6 focus:ring-0 focus:border-black transition-all text-sm text-black"
+                                                />
+                                            </div>
 
-                                                <div className="space-y-1.5">
-                                                    <Label htmlFor="phone" className="text-xs uppercase tracking-wider text-zinc-400 pl-4">WhatsApp</Label>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-[110px] flex-shrink-0">
-                                                            <Select
-                                                                name="countryCode"
-                                                                defaultValue="ES"
-                                                                onValueChange={(value) => setSelectedCountry(value)}
-                                                            >
-                                                                <SelectTrigger className="h-12 rounded-full border-zinc-200 bg-zinc-50 focus:ring-0 focus:border-black">
-                                                                    <SelectValue placeholder="+34" />
-                                                                </SelectTrigger>
-                                                                <SelectContent className="max-h-[300px]">
-                                                                    {countries.map((country) => (
-                                                                        <SelectItem key={country.code} value={country.code}>
-                                                                            <span className="flex items-center gap-2">
-                                                                                <span>{country.flag}</span>
-                                                                                <span className="text-zinc-500">{country.dial_code}</span>
-                                                                            </span>
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                        <Input
-                                                            id="phoneNumber"
-                                                            name="phoneNumber"
-                                                            type="tel"
-                                                            placeholder="9 1234 5678"
-                                                            required
-                                                            className="h-12 border-zinc-200 bg-zinc-50 rounded-full px-6 focus:ring-0 focus:border-black transition-all flex-1"
-                                                        />
+                                            <div className="space-y-1">
+                                                <Label htmlFor="email" className="text-xs uppercase tracking-wider text-zinc-400 pl-4">Correo Electrónico</Label>
+                                                <Input
+                                                    id="email"
+                                                    name="email"
+                                                    type="email"
+                                                    placeholder="tu@email.com"
+                                                    value={formValues.email}
+                                                    onChange={(e) => setFormValues(prev => ({ ...prev, email: e.target.value }))}
+                                                    required
+                                                    className="h-11 border-zinc-200 bg-zinc-50 rounded-full px-6 focus:ring-0 focus:border-black transition-all text-sm text-black"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <Label htmlFor="phone" className="text-xs uppercase tracking-wider text-zinc-400 pl-4">WhatsApp</Label>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-[105px] flex-shrink-0">
+                                                        <Select
+                                                            name="countryCode"
+                                                            defaultValue="ES"
+                                                            onValueChange={(value) => setSelectedCountry(value)}
+                                                        >
+                                                            <SelectTrigger className="h-11 rounded-full border-zinc-200 bg-zinc-50 focus:ring-0 focus:border-black text-sm text-black">
+                                                                <SelectValue placeholder="+34" />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="max-h-[300px]">
+                                                                {countries.map((country) => (
+                                                                    <SelectItem key={country.code} value={country.code}>
+                                                                        <span className="flex items-center gap-2">
+                                                                            <span>{country.flag}</span>
+                                                                            <span className="text-zinc-500">{country.dial_code}</span>
+                                                                        </span>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
                                                     </div>
+                                                    <Input
+                                                        id="phoneNumber"
+                                                        name="phoneNumber"
+                                                        type="tel"
+                                                        placeholder="9 1234 5678"
+                                                        value={formValues.phoneNumber}
+                                                        onChange={(e) => setFormValues(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                                                        required
+                                                        className="h-11 border-zinc-200 bg-zinc-50 rounded-full px-6 focus:ring-0 focus:border-black transition-all flex-1 text-sm text-black"
+                                                    />
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-4 px-2">
+                                            <div className="space-y-2 px-2 pt-2">
                                                 <div className="flex items-start space-x-3">
-                                                    <Checkbox id="age" required className="mt-0.5 rounded-full border-zinc-300 data-[state=checked]:bg-black data-[state=checked]:text-white w-5 h-5 flex-shrink-0" />
-                                                    <Label htmlFor="age" className="text-sm text-zinc-500 font-normal leading-relaxed cursor-pointer">
+                                                    <Checkbox
+                                                        id="age"
+                                                        required
+                                                        checked={formValues.ageAccepted}
+                                                        onCheckedChange={(checked) => setFormValues(prev => ({ ...prev, ageAccepted: checked === true }))}
+                                                        className="mt-0.5 rounded-full border-zinc-300 data-[state=checked]:bg-black data-[state=checked]:text-white w-5 h-5 flex-shrink-0"
+                                                    />
+                                                    <Label htmlFor="age" className="text-sm text-zinc-500 font-normal leading-tight cursor-pointer">
                                                         Confirmo que soy mayor de edad.
                                                     </Label>
                                                 </div>
                                                 <div className="flex items-start space-x-3">
-                                                    <Checkbox id="terms" required className="mt-0.5 rounded-full border-zinc-300 data-[state=checked]:bg-black data-[state=checked]:text-white w-5 h-5 flex-shrink-0" />
-                                                    <Label htmlFor="terms" className="text-sm text-zinc-500 font-normal leading-relaxed cursor-pointer">
-                                                        Acepto los <a href="/terminos-y-condiciones" target="_blank" rel="noopener noreferrer" className="text-black underline">términos y condiciones</a> y <a href="/politicas-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-black underline">las políticas de privacidad</a>.
+                                                    <Checkbox
+                                                        id="terms"
+                                                        required
+                                                        checked={formValues.termsAccepted}
+                                                        onCheckedChange={(checked) => setFormValues(prev => ({ ...prev, termsAccepted: checked === true }))}
+                                                        className="mt-0.5 rounded-full border-zinc-300 data-[state=checked]:bg-black data-[state=checked]:text-white w-5 h-5 flex-shrink-0"
+                                                    />
+                                                    <Label htmlFor="terms" className="text-sm text-zinc-500 font-normal leading-tight cursor-pointer">
+                                                        Acepto los <a href="/terminos-y-condiciones" target="_blank" rel="noopener noreferrer" className="text-black underline">términos</a> y <a href="/politicas-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-black underline">privacidad</a>.
                                                     </Label>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
 
-                                            <div className="pt-2">
-                                                <Button
-                                                    type="submit"
-                                                    onClick={() => setLeadIntent('image')}
-                                                    className="w-full h-14 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-base font-sans font-medium tracking-wide shadow-xl"
+                                    {/* Right Column - PASO 2 Upload */}
+                                    <div className={`space-y-3 transition-opacity duration-300 ${(!formValues.name || !formValues.email || !formValues.phoneNumber || !formValues.ageAccepted || !formValues.termsAccepted) ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                                        <div className="space-y-2">
+                                            <div className="inline-flex items-center rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-3 py-1 text-[10px] uppercase tracking-widest font-sans font-bold">
+                                                Paso 2
+                                            </div>
+                                            <h2 className="text-xl md:text-3xl font-serif font-bold text-black dark:text-white leading-tight">
+                                                Sube tu foto o hazte un selfie
+                                            </h2>
+                                        </div>
+
+                                        <div className="w-full space-y-3 mt-[30px]">
+                                            {!selectedFile && !mobileConnected ? (
+                                                <div
+                                                    className="group relative w-full h-[70vh] md:h-auto md:aspect-[22/11.7] border border-dashed border-zinc-300 dark:border-zinc-700 rounded-[1.5rem] hover:border-black/50 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex flex-col items-center justify-center cursor-pointer overflow-hidden bg-zinc-50/50 dark:bg-zinc-900/50"
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    onDrop={(e) => {
+                                                        e.preventDefault();
+                                                        if (e.dataTransfer.files?.[0]) setSelectedFile(e.dataTransfer.files[0]);
+                                                    }}
+                                                    onClick={() => fileInputRef.current?.click()}
                                                 >
-                                                    {generatedImage ? "Recibir mi diseño" : "Continuar con el diseño"}
+                                                    <div className="p-3 bg-white dark:bg-zinc-800 shadow-sm rounded-full mb-1 group-hover:scale-110 transition-transform duration-500">
+                                                        <UploadCloud className="w-6 h-6 text-zinc-400 group-hover:text-black transition-colors" strokeWidth={1} />
+                                                    </div>
+                                                    <h3 className="text-lg font-serif text-black dark:text-white mb-0.5">Sube tu Selfie</h3>
+                                                    <p className="text-xs text-zinc-500 max-w-[180px] text-center px-4">Arrastra tu foto aquí o haz clic</p>
+                                                    <input
+                                                        ref={fileInputRef}
+                                                        type="file"
+                                                        accept="image/*"
+                                                        hidden
+                                                        onChange={(e) => e.target.files?.[0] && setSelectedFile(e.target.files[0])}
+                                                    />
+                                                </div>
+                                            ) : selectedFile ? (
+                                                <div className="relative w-full h-[70vh] md:h-auto md:aspect-[22/11.7] flex justify-center">
+                                                    <div className="relative h-full aspect-square rounded-[1.5rem] overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                                                        <img src={URL.createObjectURL(selectedFile)} alt="Selected" className="w-full h-full object-cover" />
+                                                        <Button
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            className="absolute top-3 right-3 h-8 px-4 text-[11px] rounded-full bg-white/80 backdrop-blur-sm"
+                                                            onClick={() => setSelectedFile(null)}
+                                                        >
+                                                            Cambiar
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center w-full h-[70vh] md:h-auto md:aspect-[22/11.7] bg-zinc-50 dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 text-center p-4 space-y-2">
+                                                    <Smartphone className="w-10 h-10 text-teal-500 animate-pulse" />
+                                                    <p className="text-sm font-medium">Móvil conectado.</p>
+                                                    <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => setMobileConnected(false)}>Cancelar</Button>
+                                                </div>
+                                            )}
+
+                                            <div className="flex flex-col gap-2.5">
+                                                {!selectedFile && !mobileConnected && (
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => setStep("SELFIE_CAPTURE")}
+                                                        className="w-full h-11 rounded-full border-zinc-200 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 text-sm font-medium"
+                                                    >
+                                                        <ScanFace className="w-5 h-5 mr-2" />
+                                                        Hazte un selfie ahora
+                                                    </Button>
+                                                )}
+
+                                                <Button
+                                                    onClick={() => selectedFile && handleUpload(selectedFile)}
+                                                    disabled={!selectedFile}
+                                                    className="w-full h-11 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-base font-sans font-medium tracking-wide shadow-lg"
+                                                >
+                                                    Quiero ver mi versión mejorada
                                                 </Button>
                                             </div>
-                                        </form>
+                                        </div>
                                     </div>
                                 </div>
                             </motion.div>
@@ -1046,35 +1138,39 @@ export default function WidgetContainer({
                         {step === "EMAIL_SENT" && (
                             <motion.div
                                 key="email-sent"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
                                 className="h-full flex items-center justify-center p-4 md:p-8"
                             >
-                                <div className="max-w-md w-full text-center space-y-6">
+                                <div className="max-w-sm w-full text-center space-y-6 p-8 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-2xl border border-zinc-100 dark:border-zinc-800">
                                     {/* Success Icon */}
-                                    <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                                        <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
+                                    <div className="w-16 h-16 mx-auto bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
+                                        <Check className="w-8 h-8 text-green-500" strokeWidth={3} />
                                     </div>
 
                                     {/* Title */}
-                                    <h2 className="text-2xl md:text-3xl font-serif font-bold text-black dark:text-white">
-                                        Tu foto ha sido enviada vía correo electrónico
-                                    </h2>
+                                    <div className="space-y-4">
+                                        <h2 className="text-2xl md:text-3xl font-sans font-bold text-black dark:text-white leading-tight">
+                                            Tu foto ha sido enviada vía correo electrónico
+                                        </h2>
 
-                                    {/* Email Display */}
-                                    <p className="text-base text-zinc-600 dark:text-zinc-400">
-                                        al correo <span className="font-semibold text-black dark:text-white">{userEmail}</span>
-                                    </p>
+                                        {/* Email Display */}
+                                        <div className="space-y-2">
+                                            <p className="text-base text-zinc-600 dark:text-zinc-400">
+                                                al correo <span className="font-semibold text-black dark:text-white">{userEmail}</span>
+                                            </p>
 
-                                    {/* Instructions */}
-                                    <p className="text-sm text-zinc-500">
-                                        Revisa tu correo ahora, si no la recibes escríbenos.
-                                    </p>
+                                            {/* Instructions */}
+                                            <p className="text-sm text-zinc-500">
+                                                Revisa tu correo ahora, si no la recibes escríbenos.
+                                            </p>
+                                        </div>
+                                    </div>
 
                                     {/* Contact Button */}
                                     <Button
                                         onClick={() => window.location.href = 'https://dentalcorbella.com/contacto/'}
-                                        className="w-full h-14 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-base font-medium tracking-wide shadow-lg"
+                                        className="w-full h-12 rounded-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-sm font-medium tracking-wide shadow-lg"
                                     >
                                         Escríbenos
                                     </Button>
@@ -1113,7 +1209,7 @@ export default function WidgetContainer({
                                                     {(image || demoBeforeImage) && generatedImage ? (
                                                         <BeforeAfterSlider
                                                             beforeImage={image ? URL.createObjectURL(image) : (demoBeforeImage || "")}
-                                                            afterImage={generatedImage}
+                                                            afterImage={alignedImage || generatedImage || ""}
                                                             className="w-full h-full"
                                                         />
                                                     ) : (
@@ -1202,20 +1298,21 @@ export default function WidgetContainer({
                                 animate={{ opacity: 1, scale: 1 }}
                                 className="h-full flex items-center justify-center p-4 md:p-8"
                             >
-                                <div className="max-w-md w-full text-center space-y-8 p-10 bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl border border-zinc-100 dark:border-zinc-800">
-                                    <div className="w-20 h-20 mx-auto bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
-                                        <Check className="w-10 h-10 text-green-500" strokeWidth={3} />
+                                <div className="max-w-sm w-full text-center space-y-6 p-8 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-2xl border border-zinc-100 dark:border-zinc-800">
+                                    <div className="w-16 h-16 mx-auto bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
+                                        <Check className="w-8 h-8 text-green-500" strokeWidth={3} />
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <h2 className="text-3xl md:text-4xl font-serif font-bold text-black dark:text-white leading-tight">
+                                    <div className="space-y-3">
+                                        <h2 className="text-xl md:text-2xl font-sans font-bold text-black dark:text-white leading-tight">
                                             Solicitud enviada con éxito
                                         </h2>
-                                        <div className="space-y-3">
-                                            <p className="text-zinc-500 dark:text-zinc-400 text-lg md:text-xl font-sans">
+
+                                        <div className="space-y-1">
+                                            <p className="text-zinc-500 dark:text-zinc-400 text-sm md:text-base font-sans">
                                                 Hemos enviado su foto al correo
                                             </p>
-                                            <p className="text-black dark:text-white font-bold text-xl md:text-2xl font-sans">
+                                            <p className="text-black dark:text-white font-bold text-base md:text-lg font-sans">
                                                 {userEmail}
                                             </p>
                                         </div>
@@ -1240,21 +1337,21 @@ export default function WidgetContainer({
                                 animate={{ opacity: 1, scale: 1 }}
                                 className="h-full flex items-center justify-center p-4 md:p-8"
                             >
-                                <div className="max-w-xl w-full text-center space-y-8 p-10 bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl border border-zinc-100 dark:border-zinc-800">
-                                    <div className="w-20 h-20 mx-auto bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
-                                        <Check className="w-10 h-10 text-green-500" strokeWidth={3} />
+                                <div className="max-w-md w-full text-center space-y-6 p-8 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-2xl border border-zinc-100 dark:border-zinc-800">
+                                    <div className="w-16 h-16 mx-auto bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-2">
+                                        <Check className="w-8 h-8 text-green-500" strokeWidth={3} />
                                     </div>
 
-                                    <div className="space-y-6">
-                                        <h2 className="text-3xl md:text-4xl font-serif font-bold text-black dark:text-white leading-tight">
+                                    <div className="space-y-4">
+                                        <h2 className="text-2xl md:text-3xl font-sans font-bold text-black dark:text-white leading-tight">
                                             Solicitud enviada con éxito
                                         </h2>
-                                        <div className="space-y-5">
-                                            <p className="text-zinc-600 dark:text-zinc-400 text-lg md:text-xl leading-relaxed font-sans">
+                                        <div className="space-y-3">
+                                            <p className="text-zinc-600 dark:text-zinc-400 text-base md:text-lg leading-relaxed font-sans">
                                                 Hemos recibido su solicitud y enviado su foto al correo <br />
-                                                <span className="font-bold text-black dark:text-white text-xl md:text-2xl">{userEmail}</span>
+                                                <span className="font-bold text-black dark:text-white text-lg md:text-xl">{userEmail}</span>
                                             </p>
-                                            <p className="text-zinc-500 dark:text-zinc-400 text-base md:text-lg italic font-sans">
+                                            <p className="text-zinc-500 dark:text-zinc-400 text-sm md:text-base italic font-sans">
                                                 En breve nuestro equipo se pondrá en contacto con usted para coordinar su cita.
                                             </p>
                                         </div>

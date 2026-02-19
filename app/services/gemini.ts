@@ -3,6 +3,7 @@
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { AnalysisResponse, VariationType } from "@/types/gemini";
 import { logApiUsage, checkVideoQuota, markVideoQuotaUsed, logAudit } from "./backendService";
+import { translateGeminiError } from "@/utils/errorTranslator";
 import { uploadGeneratedImage } from "./storage";
 
 // Models
@@ -71,7 +72,7 @@ const safeParseJSON = (text: string) => {
 };
 
 // Gatekeeper
-export const validateImageStrict = async (base64Image: string): Promise<{ success: boolean; data?: { isValid: boolean; reason: string }; error?: string }> => {
+export const validateImageStrict = async (base64Image: string): Promise<{ success: boolean; data?: { isValid: boolean; reason: string }; error?: string; errorDetails?: any }> => {
     console.log("[Gemini] ENTRY: validateImageStrict called (Edge Function Delegate).");
     if (!base64Image) {
         return { success: false, error: "Error: Imagen vacía o corrupta." };
@@ -105,7 +106,12 @@ export const validateImageStrict = async (base64Image: string): Promise<{ succes
         if (!response.ok) {
             const errText = await response.text();
             console.error("Edge Function Error:", errText);
-            return { success: false, error: `Error del servidor: ${errText}` };
+            const friendlyError = translateGeminiError(errText || response.status);
+            return {
+                success: false,
+                error: friendlyError.message,
+                errorDetails: friendlyError
+            };
         }
 
         const resultKey = await response.json();
@@ -133,12 +139,17 @@ export const validateImageStrict = async (base64Image: string): Promise<{ succes
     } catch (error: any) {
         console.error("[Gatekeeper] Delegate Error:", error);
         await logAudit('AI_VALIDATION_ERROR', { error: error.message });
-        return { success: false, error: `Error de Validación: ${error.message}` };
+        const friendlyError = translateGeminiError(error.message || error);
+        return {
+            success: false,
+            error: friendlyError.message,
+            errorDetails: friendlyError
+        };
     }
 };
 
 // Analysis
-export const analyzeImageAndGeneratePrompts = async (base64Image: string): Promise<{ success: boolean; data?: AnalysisResponse; error?: string }> => {
+export const analyzeImageAndGeneratePrompts = async (base64Image: string): Promise<{ success: boolean; data?: AnalysisResponse; error?: string; errorDetails?: any }> => {
     console.log("[Gemini] ENTRY: analyzeImageAndGeneratePrompts called (Edge Function Delegate).");
     try {
         const data = stripBase64Prefix(base64Image);
@@ -164,12 +175,18 @@ export const analyzeImageAndGeneratePrompts = async (base64Image: string): Promi
 
         if (!response.ok) {
             const errText = await response.text();
-            throw new Error(`Edge Function Error: ${errText}`);
+            console.error("Edge Function Error:", errText);
+            const friendlyError = translateGeminiError(errText || response.status);
+            return {
+                success: false,
+                error: friendlyError.message,
+                errorDetails: friendlyError
+            };
         }
 
-        const text = await response.json(); // analyze-face returns the text content directly in JSON response body from previous step? 
+        const text = await response.json(); // analyze-face returns the text content directly in JSON response body from previous step?
         // Wait, analyze-face returns `new Response(analysis, ...)` which is text/string if analysis is string.
-        // Or if it returns JSON object? 
+        // Or if it returns JSON object?
         // In my previous edit of analyze-face, it returns: `return new Response(analysisText, ...)`
         // `analysisText` is the raw text from Gemini, which is likely a JSON string block (```json ... ```).
 
@@ -200,7 +217,12 @@ export const analyzeImageAndGeneratePrompts = async (base64Image: string): Promi
     } catch (criticalError: any) {
         console.error("[Gemini Analysis] Fatal Error Details:", criticalError);
         await logAudit('AI_ANALYSIS_ERROR', { error: criticalError.message });
-        return { success: false, error: `Error en Análisis: ${criticalError.message?.slice(0, 50)}` };
+        const friendlyError = translateGeminiError(criticalError.message || criticalError);
+        return {
+            success: false,
+            error: friendlyError.message,
+            errorDetails: friendlyError
+        };
     }
 };
 
@@ -252,7 +274,7 @@ export const generateSmileVariation = async (
     userId: string = "anon",
     analysisId?: string, // NEW: Secure ID
     variationType?: string // NEW: To select the variation from DB
-): Promise<{ success: boolean; data?: string; error?: string }> => {
+): Promise<{ success: boolean; data?: string; error?: string; errorDetails?: any }> => {
     console.log("[Gemini] generateSmileVariation STARTED (Edge Function Delegate)");
 
     try {
@@ -284,7 +306,13 @@ export const generateSmileVariation = async (
 
         if (!response.ok) {
             const errText = await response.text();
-            throw new Error(`Edge Function Error: ${errText}`);
+            console.error("Edge Function Error:", errText);
+            const friendlyError = translateGeminiError(errText || response.status);
+            return {
+                success: false,
+                error: friendlyError.message,
+                errorDetails: friendlyError
+            };
         }
 
         const result = await response.json();
@@ -301,7 +329,12 @@ export const generateSmileVariation = async (
     } catch (criticalGenError: any) {
         console.error("[Gemini] FATAL ERROR in generateSmileVariation:", criticalGenError);
         await logAudit('AI_SMILE_GENERATION_ERROR', { error: criticalGenError.message });
-        return { success: false, error: `Error Fatal Generando Imagen: ${criticalGenError.message}` };
+        const friendlyError = translateGeminiError(criticalGenError.message || criticalGenError);
+        return {
+            success: false,
+            error: friendlyError.message,
+            errorDetails: friendlyError
+        };
     }
 };
 

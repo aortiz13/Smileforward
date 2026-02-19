@@ -1,8 +1,5 @@
-
 "use client";
-
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { MoveHorizontal } from "lucide-react";
 
 interface BeforeAfterSliderProps {
     beforeImage: string;
@@ -19,6 +16,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
     const [isResizing, setIsResizing] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // ── Slider logic ──────────────────────────────────────────────────────
     const handleStart = () => setIsResizing(true);
     const handleEnd = () => setIsResizing(false);
 
@@ -33,17 +31,10 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
         [isResizing]
     );
 
-    const onMouseMove = (e: React.MouseEvent) => handleMove(e.clientX);
-    const onTouchMove = (e: React.TouchEvent) => handleMove(e.touches[0].clientX);
-
     useEffect(() => {
         const handleGlobalEnd = () => setIsResizing(false);
-        const handleGlobalMove = (e: MouseEvent) => {
-            if (isResizing) handleMove(e.clientX);
-        };
-        const handleGlobalTouchMove = (e: TouchEvent) => {
-            if (isResizing) handleMove(e.touches[0].clientX);
-        };
+        const handleGlobalMove = (e: MouseEvent) => { if (isResizing) handleMove(e.clientX); };
+        const handleGlobalTouchMove = (e: TouchEvent) => { if (isResizing) handleMove(e.touches[0].clientX); };
 
         window.addEventListener("mouseup", handleGlobalEnd);
         window.addEventListener("touchend", handleGlobalEnd);
@@ -58,6 +49,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
         };
     }, [isResizing, handleMove]);
 
+    // ── Render ─────────────────────────────────────────────────────────────
     return (
         <div
             ref={containerRef}
@@ -66,7 +58,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
             onTouchStart={handleStart}
             onContextMenu={(e) => e.preventDefault()}
         >
-            {/* After Image (Background - The New Smile) */}
+            {/* After Image (Background) */}
             <img
                 src={afterImage}
                 alt="After"
@@ -74,7 +66,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                 draggable={false}
             />
 
-            {/* Watermark Overlay on 'After' Image */}
+            {/* Watermark Overlay */}
             <div className="absolute inset-0 z-[5] pointer-events-none flex items-center justify-center overflow-hidden">
                 <img
                     src="/watermark-logo.png"
@@ -88,7 +80,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                 DESPUÉS
             </div>
 
-            {/* Before Image (Foreground - Clipped - The Original) */}
+            {/* Before Image (Foreground - Clipped) */}
             <div
                 className="absolute inset-0 overflow-hidden"
                 style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
@@ -112,7 +104,6 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                 {/* Vertical Line */}
                 <div className="absolute inset-y-0 -ml-0.5 w-0.5 bg-white shadow-[0_0_10px_rgba(0,0,0,0.5)]" />
 
-                {/* Round Handle */}
                 {/* Round Handle */}
                 <div className="absolute top-1/2 -mt-6 -ml-6 w-12 h-12 rounded-full bg-[#7f8b81] border-2 border-white flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-transform transform hover:scale-110 active:scale-95">
                     <div className="flex items-center gap-1">

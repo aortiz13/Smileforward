@@ -10,7 +10,6 @@ Deno.serve(async (req) => {
         return new Response('ok', { headers: corsHeaders })
     }
 
-
     try {
         const { image_path, image_base64, analysisAsync, prompt_options } = await req.json()
         if (!image_path && !image_base64) throw new Error('Image path or Base64 data is required')
@@ -23,7 +22,6 @@ Deno.serve(async (req) => {
         let base64Image = image_base64;
 
         if (!base64Image && image_path) {
-            // Download original image
             const { data: fileData, error: downloadError } = await supabase.storage.from('uploads').download(image_path)
             if (downloadError) throw new Error(`Download failed: ${downloadError.message}`)
 
@@ -34,7 +32,6 @@ Deno.serve(async (req) => {
         // --- PROMPT ENGINEERING STRATEGY ---
         let finalPrompt = "";
 
-        // 1. Check for Secure Analysis ID (Proposed Optimized Flow)
         if (prompt_options?.analysis_id) {
             console.log(`Fetching secure prompt from DB: ${prompt_options.analysis_id}`);
 
@@ -48,28 +45,14 @@ Deno.serve(async (req) => {
                 throw new Error("Security Error: Invalid or expired Analysis ID.");
             }
 
-            // Find the requested variation (e.g. "original_bg")
-            // The client sends `variationPrompt` which currently might be just the 'Subject' string or the type.
-            // We need to know WHICH variation type validation to pick.
-            // Let's assume `prompt_options.variation_type` is passed, or we infer it.
-            // If `variationPrompt` contains the type name (e.g. "original_bg")...
-            // Or we check `prompt_options.type`.
-
-            // Fallback: If the client passes the "Subject" text that matches one of the variations...
-            // Ideally, client should send `type: 'original_bg'`.
-            // Let's assume `prompt_options.type` exists (we will add it to client).
-            // If not, default to 'original_bg'.
             const targetType = prompt_options.type || 'original_bg';
-
             const variation = analysisRecord.result.variations.find((v: any) => v.type === targetType);
 
             if (!variation) {
-                console.warn(`Variation ${targetType} not found in analysis. Using first available.`); // Fallback
+                console.warn(`Variation ${targetType} not found in analysis. Using first available.`);
             }
             const promptData = variation ? variation.prompt_data : analysisRecord.result.variations[0].prompt_data;
 
-            // --- CONSTRUCT FULL DEMO-QUALITY PROMPT ---
-            // Combining all the rich instructions into one block.
             finalPrompt = `
                 Perform a ${promptData.Composition} of ${promptData.Subject} ${promptData.Action} in a ${promptData.Location}.
                 Style: ${promptData.Style}. 
@@ -83,6 +66,7 @@ Deno.serve(async (req) => {
                 - Do NOT crop the head or change the background.
                 - Replace ONLY the teeth area while keeping the rest of the face, skin texture, and features identical to the reference image.
                 - The input image must be the absolute reference for identity and composition.
+                - vertical portrait, full face visible, do not crop head.
             `;
 
             console.log("--- SECURE GENERATE SMILE PROMPT ---");
@@ -90,75 +74,101 @@ Deno.serve(async (req) => {
             console.log("------------------------------------");
 
         } else {
-            // 2. Fallback to Old Insecure/Simple Flow (if no analysis_id provided)
             finalPrompt = `
               Subject: ${prompt_options?.variationPrompt || "Portrait of the user with a perfect, natural smile."}
               Important: Maintain the EXACT framing, zoom, angle, and background of the original image. Do NOT zoom in or out. Do NOT crop.
               Action: Smiling confidently with a perfect, natural smile.
               Style: Photorealistic, cinematic lighting, 8k resolution, dental aesthetic high quality.
               Editing Input: Replace only the teeth with high quality veneers, keeping the face structure, skin texture, and background exactly the same.
+              - vertical portrait, full face visible, do not crop head.
             `;
         }
 
-        // Call Imaging API (Imagen 3.0 via Google AI Studio)
         const apiKey = Deno.env.get('GOOGLE_API_KEY')
         if (!apiKey) throw new Error("GOOGLE_API_KEY missing")
 
-        // Use Imagen 3.0 for high-quality generation/editing
-        const modelEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`
-
-        console.log("Calling Google AI (Imagen 3) with endpoint:", modelEndpoint);
-
-        const imagenBody = {
-            instances: [
-                {
-                    prompt: finalPrompt,
-                    image: {
-                        bytesBase64Encoded: base64Image,
-                        mimeType: "image/jpeg"
+        const geminiBody = {
+            contents: [{
+                parts: [
+                    { text: finalPrompt },
+                    {
+                        inline_data: {
+                            mime_type: "image/jpeg",
+                            data: base64Image
+                        }
                     }
+                ]
+            }],
+            generationConfig: {
+                response_modalities: ["TEXT", "IMAGE"],
+                imageConfig: {
+                    aspectRatio: "9:16",
+                    imageSize: "4K"
                 }
-            ],
-            parameters: {
-                sampleCount: 1,
-                aspectRatio: "1:1" // Or try to detect from original
             }
         };
 
-        const response = await fetch(modelEndpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(imagenBody)
-        })
+        // --- MODELO CON FALLBACK ---
+        const models = [
+            'gemini-3-pro-image-preview',  // Nano Banana Pro - máxima calidad
+            'gemini-2.5-flash-image',      // Nano Banana - fallback
+        ]
 
-        console.log("Imagen 3 Response Status:", response.status);
+        let result = null;
+        let lastError = null;
 
-        if (!response.ok) {
-            const err = await response.text();
-            console.error("Imagen 3 API Error Body:", err);
-            throw new Error(`Imagen 3 API Failed (${response.status}): ${err}`)
+        for (const model of models) {
+            try {
+                console.log(`Trying model: ${model}`);
+                const modelEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+                const response = await fetch(modelEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(geminiBody)
+                })
+
+                console.log(`Model ${model} response status:`, response.status);
+
+                if (!response.ok) {
+                    const err = await response.text();
+                    console.warn(`Model ${model} failed (${response.status}): ${err}`);
+                    lastError = `${model}: ${err}`;
+                    continue;
+                }
+
+                result = await response.json();
+                console.log(`Success with model: ${model}`);
+                break;
+
+            } catch (err) {
+                console.warn(`Model ${model} threw error:`, err);
+                lastError = err.message;
+                continue;
+            }
         }
 
-        const result = await response.json();
+        if (!result) throw new Error(`All models failed. Last error: ${lastError}`);
 
-        // Imagen 3 returns predictions[0].bytesBase64Encoded or similar
-        const prediction = result.predictions?.[0];
+        // --- EXTRAER IMAGEN GENERADA ---
         let generatedBase64 = null;
-        let mimeType = "image/jpeg";
+        const candidate = result.candidates?.[0];
 
-        if (prediction) {
-            generatedBase64 = prediction.bytesBase64Encoded || prediction.image?.bytesBase64Encoded;
-            mimeType = prediction.mimeType || "image/jpeg";
+        if (candidate?.content?.parts) {
+            for (const part of candidate.content.parts) {
+                if (part.inlineData?.data) {
+                    generatedBase64 = part.inlineData.data;
+                    break;
+                }
+            }
         }
 
         if (!generatedBase64) {
-            console.error("No image in prediction:", JSON.stringify(result));
-            throw new Error("AI did not return an image. Check content safety filters or quota.");
+            console.error("No image in response:", JSON.stringify(result));
+            throw new Error("AI did not return an image. Check content safety filters or prompt.");
         }
 
-        // Upload to Supabase Storage
+        // --- UPLOAD TO SUPABASE ---
         const fileName = `smile_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
         const binaryString = atob(generatedBase64);
         const bytes = new Uint8Array(binaryString.length);
@@ -166,12 +176,11 @@ Deno.serve(async (req) => {
             bytes[i] = binaryString.charCodeAt(i);
         }
 
-        // Assuming 'generated' bucket exists and is public
         const { data: uploadData, error: uploadError } = await supabase
             .storage
             .from('generated')
             .upload(fileName, bytes, {
-                contentType: mimeType,
+                contentType: 'image/jpeg',
                 upsert: false
             });
 
@@ -185,16 +194,14 @@ Deno.serve(async (req) => {
             .from('generated')
             .getPublicUrl(fileName);
 
-        // --- OPTIMIZATION: Fire-and-Forget Watermarking ---
-        // We trigger the watermark function but DO NOT await it.
-        // This allows the UI to get the result immediately.
+        // --- FIRE-AND-FORGET WATERMARK ---
         console.log("Triggering background watermark...");
         const watermarkUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/watermark-image`;
         fetch(watermarkUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}` // Using Google Key as generic secret or better use service role if possible, but anon key works for invoked functions if RLS allows or we use internal
+                'Authorization': `Bearer ${supabaseKey}`
             },
             body: JSON.stringify({
                 image_path: fileName,
@@ -216,7 +223,7 @@ Deno.serve(async (req) => {
             error: error.message
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 500, // Return 500 so client knows it failed
+            status: 500,
         })
     }
 })
