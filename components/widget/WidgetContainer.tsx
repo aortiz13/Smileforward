@@ -173,8 +173,8 @@ export default function WidgetContainer({
                 img.onload = () => {
                     const canvas = document.createElement("canvas");
                     const ctx = canvas.getContext("2d");
-                    const MAX_WIDTH = 1500;
-                    const MAX_HEIGHT = 1500;
+                    const MAX_WIDTH = 5000;
+                    const MAX_HEIGHT = 5000;
                     let width = img.width;
                     let height = img.height;
                     if (width > height) {
@@ -185,7 +185,7 @@ export default function WidgetContainer({
                     canvas.width = width;
                     canvas.height = height;
                     ctx?.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL("image/jpeg", 0.8));
+                    resolve(canvas.toDataURL("image/jpeg", 1.0));
                 };
                 img.onerror = reject;
             };
@@ -314,9 +314,11 @@ export default function WidgetContainer({
             setUserId(supabaseUserId);
             formData.append('userId', supabaseUserId);
 
+            let localScanUrl = null;
             const uploadRes = await uploadScan(formData);
             if (uploadRes.success && uploadRes.data) {
-                setUploadedScanUrl(uploadRes.data);
+                localScanUrl = uploadRes.data;
+                setUploadedScanUrl(localScanUrl);
             } else {
                 console.warn("Fallo subida de imagen original:", uploadRes.error);
             }
@@ -392,12 +394,13 @@ export default function WidgetContainer({
                 try {
                     // 1. Save Generation
                     const supabase = createClient();
+                    const finalOutput = alignedImage || genResult.data;
                     const { error: genError } = await supabase.from('generations').insert({
                         lead_id: currentLeadId,
                         type: 'image',
                         status: 'completed',
-                        input_path: uploadedScanUrl || 'unknown',
-                        output_path: alignedImage || genResult.data,
+                        input_path: localScanUrl || 'unknown',
+                        output_path: finalOutput,
                         metadata: { source: 'widget_v1' }
                     });
                     if (genError) console.error("Error saving generation:", genError);

@@ -187,7 +187,7 @@ export async function alignGeneratedToReference(
         ctx.setTransform(s * cos, s * sin, -s * sin, s * cos, transform.tx, transform.ty);
         ctx.drawImage(genImg, 0, 0);
 
-        const alignedUrl = canvas.toDataURL("image/jpeg", 0.95);
+        const alignedUrl = canvas.toDataURL("image/jpeg", 1.0);
         console.log("[alignFaces] V3 Successful. Scale:", transform.scale.toFixed(4), "Angle:", transform.angle.toFixed(4));
 
         return { alignedUrl, success: true };

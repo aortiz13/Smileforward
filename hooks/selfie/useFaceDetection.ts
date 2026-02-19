@@ -94,8 +94,15 @@ export const useFaceDetection = (
             }
         }
 
-        const startTimeMs = performance.now();
-        const result = faceLandmarkerRef.current.detectForVideo(video, startTimeMs);
+        let result;
+        try {
+            const startTimeMs = performance.now();
+            result = faceLandmarkerRef.current.detectForVideo(video, startTimeMs);
+        } catch (err) {
+            console.error("[useFaceDetection] MediaPipe detectForVideo error:", err);
+            requestRef.current = requestAnimationFrame(detectFace);
+            return;
+        }
 
         // Check for multiple faces
         if (result.faceLandmarks.length > 1) {
@@ -143,8 +150,8 @@ export const useFaceDetection = (
                 noseTip.x > 0.35 && noseTip.x < 0.65 && noseTip.y > 0.2 && noseTip.y < 0.8;
 
             // On desktop landscape, a face filling the guide oval is around 0.20-0.25 of frame width.
-            // Setting min to 0.10 to be very permissive.
-            const isCorrectSize = faceWidth > 0.10 && faceWidth < 0.7;
+            // Setting min to 0.08 to be even more permissive and avoid "too far" errors prematurely.
+            const isCorrectSize = faceWidth > 0.08 && faceWidth < 0.7;
 
             // Update state with separate flags for more granular feedback if needed
             // (Internal state update if you decide to add them, but for now we'll just use the logic)

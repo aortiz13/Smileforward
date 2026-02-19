@@ -100,6 +100,18 @@ export default function AdminLayout({
         </div>
     );
 
+    const isAuthFlow = pathname === '/administracion/update-password';
+
+    if (isAuthFlow) {
+        return (
+            <div className="h-screen overflow-hidden bg-muted/20 flex flex-col">
+                <main className="flex-1 overflow-y-auto w-full">
+                    {children}
+                </main>
+            </div>
+        );
+    }
+
     return (
         <div className="h-screen overflow-hidden bg-muted/20 flex flex-col md:flex-row">
             {/* Mobile Header */}

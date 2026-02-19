@@ -27,7 +27,14 @@ export async function validateStaticImage(file: File): Promise<{ isValid: boolea
         // Convert File to ImageBitmap for MediaPipe
         const image = await createImageBitmap(file);
 
-        const result = landmarker.detect(image);
+        let result;
+        try {
+            result = landmarker.detect(image);
+        } catch (innerErr) {
+            console.error("[faceValidation] MediaPipe detect crash:", innerErr);
+            image.close();
+            return { isValid: false, reason: "Error al procesar la imagen (ROI inválido). Reintenta." };
+        }
 
         // Close bitmap to free memory
         image.close();
@@ -56,8 +63,9 @@ export async function validateStaticImage(file: File): Promise<{ isValid: boolea
         // 2. Size/Distance Check (Face Width relative to image width)
         const faceWidth = Math.abs(rightCheek.x - leftCheek.x);
 
-        // If face width is too small (< 20% of image), it's too far
-        if (faceWidth < 0.20) {
+        // If face width is too small (< 12% of image), it's too far
+        // Relaxed from 0.20 to 0.12 for better compatibility
+        if (faceWidth < 0.12) {
             return { isValid: false, reason: "El rostro está demasiado lejos. Acércate más." };
         }
 
