@@ -377,11 +377,13 @@ export default function WidgetContainer({
             // 5. Align Faces (PRE-CALCULATION)
             setProcessStatus('aligning');
             const alignResult = await alignGeneratedToReference(base64, genResult.data);
+            let finalAlignedUrl = genResult.data;
             if (alignResult.success) {
-                setAlignedImage(alignResult.alignedUrl);
+                finalAlignedUrl = alignResult.alignedUrl;
+                setAlignedImage(finalAlignedUrl);
             } else {
                 console.warn("[WidgetContainer] Pre-alignment failed:", alignResult.error);
-                setAlignedImage(genResult.data); // Fallback to unaligned
+                setAlignedImage(finalAlignedUrl); // Fallback to unaligned
             }
 
             setProcessStatus('complete');
@@ -394,13 +396,12 @@ export default function WidgetContainer({
                 try {
                     // 1. Save Generation
                     const supabase = createClient();
-                    const finalOutput = alignedImage || genResult.data;
                     const { error: genError } = await supabase.from('generations').insert({
                         lead_id: currentLeadId,
                         type: 'image',
                         status: 'completed',
                         input_path: localScanUrl || 'unknown',
-                        output_path: finalOutput,
+                        output_path: finalAlignedUrl,
                         metadata: { source: 'widget_v1' }
                     });
                     if (genError) console.error("Error saving generation:", genError);

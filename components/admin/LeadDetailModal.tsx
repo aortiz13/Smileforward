@@ -471,13 +471,16 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                         <div className="w-full h-full flex items-center justify-center pt-8">
                             {viewMode === 'images' ? (
                                 generation ? (
-                                    <div className="relative w-full h-full flex items-center justify-center">
-                                        <div className="relative h-[90%] w-auto aspect-[9/16] shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-black">
+                                    <>
+                                        <div className="relative w-full h-full flex items-center justify-center">
                                             {generation.input_path && generation.input_path !== 'unknown' ? (
-                                                <BeforeAfterSlider
-                                                    beforeImage={generation.input_path}
-                                                    afterImage={generation.output_path}
-                                                />
+                                                <div className="relative h-[90%] w-auto aspect-[9/16] rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl group">
+                                                    <BeforeAfterSlider
+                                                        beforeImage={generation.input_path}
+                                                        afterImage={generation.output_path}
+                                                        className="w-full h-full"
+                                                    />
+                                                </div>
                                             ) : (
                                                 <img
                                                     src={generation.output_path}
@@ -491,7 +494,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                                 <Download className="w-4 h-4" />
                                             </Button>
                                         </div>
-                                    </div>
+                                    </>
                                 ) : (
                                     <div className="text-center text-muted-foreground p-8">
                                         <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-20" strokeWidth={1.5} />
@@ -528,6 +531,6 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                     </div>
                 </div>
             </DialogContent>
-        </Dialog>
+        </Dialog >
     );
 }
