@@ -7,7 +7,7 @@ import { SmileSession } from '@/types/gemini';
  * Uploads a file to Supabase Storage.
  * Note: Accepting FormData is necessary for Server Actions handling file uploads.
  */
-export const uploadScan = async (formData: FormData): Promise<{ success: boolean; data?: string; error?: string }> => {
+export const uploadScan = async (formData: FormData): Promise<{ success: boolean; data?: string; path?: string; error?: string }> => {
     console.log("[Storage] ENTRY: uploadScan called.");
     try {
         const file = formData.get('file') as File;
@@ -21,7 +21,7 @@ export const uploadScan = async (formData: FormData): Promise<{ success: boolean
         const filePath = `${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-            .from('scans')
+            .from('uploads') // Align with Edge Function expectations
             .upload(filePath, file);
 
         if (uploadError) {
@@ -29,8 +29,8 @@ export const uploadScan = async (formData: FormData): Promise<{ success: boolean
             return { success: false, error: `Upload Failed: ${uploadError.message}` };
         }
 
-        const { data } = supabase.storage.from('scans').getPublicUrl(filePath);
-        return { success: true, data: data.publicUrl };
+        const { data } = supabase.storage.from('uploads').getPublicUrl(filePath);
+        return { success: true, data: data.publicUrl, path: filePath }; // Added path for AI services
     } catch (error: any) {
         console.error("[Storage] uploadScan critical error:", error);
         return { success: false, error: `Upload Failed: ${error.message || "Unknown error"}` };

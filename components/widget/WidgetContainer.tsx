@@ -329,9 +329,11 @@ export default function WidgetContainer({
             formData.append('userId', supabaseUserId);
 
             let localScanUrl = null;
+            let localScanPath = null;
             const uploadRes = await uploadScan(formData);
             if (uploadRes.success && uploadRes.data) {
                 localScanUrl = uploadRes.data;
+                localScanPath = uploadRes.path;
                 setUploadedScanUrl(localScanUrl);
             } else {
                 console.warn("Fallo subida de imagen original:", uploadRes.error);
@@ -341,7 +343,9 @@ export default function WidgetContainer({
 
             // 3. Analyze Image
             const analysisFormData = new FormData();
-            if (localScanUrl) {
+            if (localScanPath) {
+                analysisFormData.append('imagePath', localScanPath);
+            } else if (localScanUrl) {
                 analysisFormData.append('imageUrl', localScanUrl);
             } else {
                 const analysisFile = base64ToFile(base64, 'analysis_input.jpg');
@@ -377,7 +381,9 @@ export default function WidgetContainer({
 
             // Pass analysis_id and variation type to use server-side prompt construction
             const genFormData = new FormData();
-            if (localScanUrl) {
+            if (localScanPath) {
+                genFormData.append('imagePath', localScanPath);
+            } else if (localScanUrl) {
                 genFormData.append('imageUrl', localScanUrl);
             } else {
                 const genFile = base64ToFile(base64, 'generation_input.jpg');

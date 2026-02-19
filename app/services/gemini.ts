@@ -154,9 +154,15 @@ export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promis
     try {
         const file = formData.get('file');
         const imageUrl = formData.get('imageUrl') as string;
+        const imagePath = formData.get('imagePath') as string; // New: Internal storage path
+
         let data = "";
 
-        if (imageUrl && imageUrl.startsWith('http')) {
+        // PRIORITY 1: if internal path exists, we don't need to send base64 data!
+        // The Edge function can download it directly.
+        if (imagePath) {
+            console.log("[Gemini] Using internal path for analysis:", imagePath);
+        } else if (imageUrl && imageUrl.startsWith('http')) {
             console.log("[Gemini] Fetching image from URL for analysis:", imageUrl);
             const res = await fetch(imageUrl);
             const arrayBuffer = await res.arrayBuffer();
@@ -165,7 +171,7 @@ export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promis
             const arrayBuffer = await file.arrayBuffer();
             data = Buffer.from(arrayBuffer).toString('base64');
         } else {
-            return { success: false, error: "Missing file or imageUrl in FormData" };
+            return { success: false, error: "Missing file, path or imageUrl in FormData" };
         }
 
         const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -182,7 +188,8 @@ export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promis
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                image_base64: data,
+                image_path: imagePath,
+                image_base64: data || undefined,
                 mode: 'analyze' // Default
             })
         });
@@ -287,6 +294,7 @@ export const generateSmileVariation = async (formData: FormData): Promise<{ succ
     try {
         const file = formData.get('file');
         const imageUrl = formData.get('imageUrl') as string;
+        const imagePath = formData.get('imagePath') as string; // New: Internal storage path
         const variationPrompt = formData.get('variationPrompt') as string;
         const aspectRatio = (formData.get('aspectRatio') as any) || "1:1";
         const userId = formData.get('userId') as string || "anon";
@@ -294,7 +302,11 @@ export const generateSmileVariation = async (formData: FormData): Promise<{ succ
         const variationType = formData.get('variationType') as string;
 
         let data = "";
-        if (imageUrl && imageUrl.startsWith('http')) {
+
+        // PRIORITY 1: if internal path exists, we don't need to send base64 data!
+        if (imagePath) {
+            console.log("[Gemini] Using internal path for generation:", imagePath);
+        } else if (imageUrl && imageUrl.startsWith('http')) {
             console.log("[Gemini] Fetching image from URL for generation:", imageUrl);
             const res = await fetch(imageUrl);
             const arrayBuffer = await res.arrayBuffer();
@@ -303,7 +315,7 @@ export const generateSmileVariation = async (formData: FormData): Promise<{ succ
             const arrayBuffer = await file.arrayBuffer();
             data = Buffer.from(arrayBuffer).toString('base64');
         } else {
-            return { success: false, error: "Missing file or imageUrl in FormData" };
+            return { success: false, error: "Missing file, path or imageUrl in FormData" };
         }
 
         const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -320,7 +332,8 @@ export const generateSmileVariation = async (formData: FormData): Promise<{ succ
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                image_base64: data,
+                image_path: imagePath,
+                image_base64: data || undefined,
                 prompt_options: {
                     variationPrompt, // Fallback / UI Text
                     aspectRatio,

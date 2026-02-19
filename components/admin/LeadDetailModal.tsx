@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     Dialog,
     DialogContent,
@@ -31,9 +31,11 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
     const [videoGen, setVideoGen] = useState<any>(null);
     const [viewMode, setViewMode] = useState<'video' | 'images'>('images');
     const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
-    const [pollingCount, setPollingCount] = useState(0);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    // Polling ref — no se destruye con re-renders
+    const pollingRef = useRef<any>(null);
 
     const scenarios = [
         { id: 'park', label: 'Parque', icon: Trees, description: 'Exterior natural, luz de día' },
@@ -46,79 +48,81 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
     const supabase = createClient();
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 
-    // Fetch existing generations (useEffect)
+    // Función para iniciar polling — usa ref, no se destruye con re-renders
+    const startPolling = (generationId: string) => {
+        if (pollingRef.current) clearInterval(pollingRef.current);
+        console.log("[Polling] Starting for generation:", generationId);
+
+        pollingRef.current = setInterval(async () => {
+            try {
+                const { data, error } = await supabase.functions.invoke('check-video', {
+                    body: { generation_id: generationId }
+                });
+
+                console.log("[Polling] Response:", data, "Error:", error);
+
+                if (error) throw error;
+
+                if (data?.status === 'completed') {
+                    console.log("[Polling] ✅ Video ready!", data);
+                    clearInterval(pollingRef.current);
+                    pollingRef.current = null;
+                    setVideoGen(data);
+                    setGeneratingVideo(false);
+                    setViewMode('video');
+                    toast.success("¡Vídeo generado con éxito! 🎉");
+                    onLeadUpdated?.();
+                } else if (data?.status === 'error' || data?.status === 'failed') {
+                    console.error("[Polling] ❌ Video failed:", data);
+                    clearInterval(pollingRef.current);
+                    pollingRef.current = null;
+                    setGeneratingVideo(false);
+                    toast.error("Error al generar vídeo");
+                    onLeadUpdated?.();
+                }
+            } catch (err) {
+                console.error("[Polling] Error:", err);
+            }
+        }, 5000);
+    };
+
+    // Cleanup al desmontar
+    useEffect(() => {
+        return () => {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+        };
+    }, []);
+
+    // Sincronizar con datos del lead (prop)
     useEffect(() => {
         if (lead && open) {
-            console.log(`[LeadDetailModal] Syncing data for lead: ${lead.id} (${lead.name})`);
+            // No sobreescribir si ya tenemos un video completado localmente
+            if (videoGen?.status === 'completed') return;
+
             const video = lead.generations?.find((g: any) => g.type === 'video' && g.status === 'completed');
-            const pendingVideo = lead.generations?.find((g: any) => g.type === 'video' && (g.status === 'pending' || g.status === 'processing' || g.status === 'processing_video' || g.status === 'processing_video_veo'));
+            const pendingVideo = lead.generations?.find((g: any) => g.type === 'video' && (
+                g.status === 'pending' ||
+                g.status === 'processing' ||
+                g.status === 'processing_video' ||
+                g.status === 'processing_video_veo'
+            ));
 
             if (video) {
-                console.log("[LeadDetailModal] Found completed video in props:", video.id);
                 setVideoGen(video);
                 setGeneratingVideo(false);
-                // We only force video view if it was just completed or if we're not currently generating
-                if (viewMode !== 'video' && !generatingVideo) {
-                    setViewMode('video');
-                }
             } else if (pendingVideo) {
-                console.log("[LeadDetailModal] Found pending video in props:", pendingVideo.id);
-                setVideoGen(pendingVideo);
-                setGeneratingVideo(true);
+                // Solo iniciar polling si no hay uno ya activo
+                if (!pollingRef.current) {
+                    setVideoGen(pendingVideo);
+                    setGeneratingVideo(true);
+                    startPolling(pendingVideo.id);
+                }
             } else {
                 setVideoGen(null);
                 setGeneratingVideo(false);
             }
         }
-    }, [lead, open]); // Depend on full lead object to sync with parent refreshes
-
-    // Polling logic for pending video
-    useEffect(() => {
-        let interval: any;
-        const isPending = videoGen?.status === 'initializing' ||
-            videoGen?.status === 'pending' ||
-            videoGen?.status === 'processing' ||
-            videoGen?.status === 'processing_video' ||
-            videoGen?.status === 'processing_video_veo';
-
-        if (generatingVideo && videoGen?.id && isPending) {
-            console.log("[LeadDetailModal] Starting polling for video:", videoGen.id);
-            interval = setInterval(async () => {
-                try {
-                    const { data, error } = await supabase.functions.invoke('check-video', {
-                        body: { generation_id: videoGen.id }
-                    });
-
-                    if (error) throw error;
-
-                    console.log("[LeadDetailModal] Polling Status:", data?.status);
-
-                    if (data?.status === 'completed') {
-                        console.log("[LeadDetailModal] Video Ready! Updating UI.", data);
-                        setVideoGen(data);
-                        setGeneratingVideo(false);
-                        setViewMode('video');
-                        toast.success("¡Vídeo generado con éxito!");
-                        // Notify parent to refresh data
-                        if (onLeadUpdated) onLeadUpdated();
-                    } else if (data?.status === 'error' || data?.status === 'failed') {
-                        console.error("[LeadDetailModal] Video Generation Failed:", data);
-                        setGeneratingVideo(false);
-                        toast.error("Error al generar vídeo");
-                        if (onLeadUpdated) onLeadUpdated();
-                    }
-                } catch (err) {
-                    console.error("Polling error:", err);
-                }
-            }, 5000);
-        }
-        return () => {
-            if (interval) {
-                console.log("[LeadDetailModal] Stopping polling");
-                clearInterval(interval);
-            }
-        };
-    }, [generatingVideo, videoGen?.id, videoGen?.status]);
+    }, [lead, open]);
 
     if (!lead) return null;
 
@@ -146,7 +150,9 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
             if (error) throw error;
 
             console.log("[LeadDetailModal] Video generation initiated:", data);
-            setVideoGen({ id: data.generation_id, status: 'initializing' });
+            const newVideoGen = { id: data.generation_id, status: 'initializing' };
+            setVideoGen(newVideoGen);
+            startPolling(data.generation_id); // ← inicia polling con ref
         } catch (error: any) {
             setGeneratingVideo(false);
             toast.error("Error al iniciar generación: " + error.message);
@@ -531,6 +537,6 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                     </div>
                 </div>
             </DialogContent>
-        </Dialog >
+        </Dialog>
     );
 }
