@@ -18,7 +18,10 @@ export default async function AdminRootPage() {
 
     if (roleData?.role === 'basic') {
         redirect("/administracion/leads");
-    } else {
+    } else if (roleData?.role === 'admin') {
         redirect("/administracion/dashboard");
+    } else {
+        // If logged in but no role found, default to leads to avoid loop with /login
+        redirect("/administracion/leads");
     }
 }

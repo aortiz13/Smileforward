@@ -19,7 +19,21 @@ export default async function DashboardPage() {
 
     // Both admin and basic can access dashboard
     if (roleData?.role !== 'admin' && roleData?.role !== 'basic') {
-        redirect("/login");
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[600px] space-y-4 p-8 text-center text-black">
+                <h2 className="text-2xl font-bold">Acceso No Autorizado</h2>
+                <p className="text-muted-foreground max-w-md">
+                    Tu cuenta no tiene los permisos necesarios para acceder al panel de administración.
+                </p>
+                <div className="pt-4">
+                    <form action="/auth/logout" method="post">
+                        <button type="submit" className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                            Cerrar Sesión
+                        </button>
+                    </form>
+                </div>
+            </div>
+        );
     }
 
     // Fetch Stats
