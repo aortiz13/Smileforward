@@ -100,7 +100,7 @@ function HomeContent() {
         )}
 
         {/* Floating Widget Container */}
-        <section className={`w-full ${isWidgetMode ? 'h-full' : 'max-w-2xl md:mx-auto relative z-10'}`}>
+        <section className={`w-full ${isWidgetMode ? 'h-full' : 'md:w-[90%] mx-auto relative z-10'}`}>
           {/* Subtle premium glow behind widget - Hidden in Widget Mode */}
           {!isWidgetMode && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-tr from-teal-500/10 via-purple-500/5 to-transparent blur-3xl rounded-full opacity-60 pointer-events-none"></div>
