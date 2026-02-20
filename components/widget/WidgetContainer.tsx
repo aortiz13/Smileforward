@@ -627,8 +627,7 @@ export default function WidgetContainer({
     );
 
     return (
-        <div className="relative h-auto md:h-[calc(100vh-100px)] min-h-[600px] w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col font-sans overflow-visible md:overflow-hidden rounded-[2rem]">
-            {/* Header - Minimal with Serif Font */}
+        <div className="relative h-auto w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col font-sans overflow-hidden rounded-[2rem]">            {/* Header - Minimal with Serif Font */}
             <div className="flex-none p-6 md:p-8 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-white dark:bg-zinc-900 z-20">
                 <h1 className="text-xl md:text-2xl font-serif text-black dark:text-white tracking-tight">Smile Forward</h1>
                 {/* Subtle Status Indicator */}
