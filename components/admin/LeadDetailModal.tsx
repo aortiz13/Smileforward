@@ -56,6 +56,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
     // Progress state
     const [videoProgress, setVideoProgress] = useState(0);
     const [videoStage, setVideoStage] = useState("");
+    const [sendingVideo, setSendingVideo] = useState(false);
 
     // Reset simple states when lead changes
     useEffect(() => {
@@ -318,6 +319,33 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
             setGeneratingVideo(false);
             generatingRef.current = false;
             toast.error("Error al iniciar generación: " + error.message);
+        }
+    };
+    const handleSendVideo = async () => {
+        if (!lead?.id || !videoGen?.output_path) return;
+
+        setSendingVideo(true);
+        toast.info("Enviando video por email...");
+
+        try {
+            const { data, error } = await supabase.functions.invoke("send-video", {
+                body: {
+                    leadId: lead.id,
+                    videoPath: videoGen.output_path,
+                },
+            });
+
+            if (error) throw error;
+            if (data.success) {
+                toast.success("¡Video enviado con éxito! 📧");
+            } else {
+                throw new Error(data.error || "Error al enviar");
+            }
+        } catch (error: any) {
+            console.error("[VideoDebug] Send Video Failed:", error);
+            toast.error("Error al enviar el video: " + error.message);
+        } finally {
+            setSendingVideo(false);
         }
     };
 
@@ -741,7 +769,21 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                             playsInline
                                             loop
                                         />
-                                        <div className="absolute top-4 right-4 z-30">
+                                        <div className="absolute top-4 right-4 z-30 flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                className="h-8 rounded-full bg-green-600 hover:bg-green-700 border-none text-white text-xs font-bold shadow-lg"
+                                                onClick={handleSendVideo}
+                                                disabled={sendingVideo}
+                                            >
+                                                {sendingVideo ? (
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                                                ) : (
+                                                    <Mail className="w-3.5 h-3.5 mr-1.5" />
+                                                )}
+                                                Enviar por Email
+                                            </Button>
                                             <Button
                                                 size="sm"
                                                 variant="secondary"
