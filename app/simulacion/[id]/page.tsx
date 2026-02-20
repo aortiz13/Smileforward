@@ -1,3 +1,4 @@
+// app/simulacion/[id]/page.tsx
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 
@@ -20,79 +21,127 @@ export default async function SimulacionPage({
 
     if (error || !lead?.video_path) return notFound()
 
-    // Apunta al route handler — nunca a Supabase directamente
     const videoSrc = `/api/video/${id}`
 
     return (
-        <main
-            style={{
-                minHeight: '100vh',
-                backgroundColor: '#000',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '20px',
-                fontFamily: 'Inter, system-ui, sans-serif',
-            }}
-        >
-            <div style={{ textAlign: 'center', maxWidth: '640px', width: '100%' }}>
-                <h1 style={{
-                    color: '#fff',
-                    fontSize: '32px',
-                    fontWeight: '700',
-                    marginBottom: '8px',
-                    letterSpacing: '-0.5px'
-                }}>
-                    Smile Forward
-                </h1>
-                {lead.name && (
-                    <p style={{ color: '#888', marginBottom: '32px', fontSize: '18px' }}>
-                        Tu simulación personalizada, {lead.name}
-                    </p>
-                )}
+        <>
+            <style>{`
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
 
-                <div style={{
-                    position: 'relative',
-                    width: '100%',
-                    borderRadius: '24px',
-                    overflow: 'hidden',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                    backgroundColor: '#111',
-                    aspectRatio: '9/16'
-                }}>
+        body {
+          background-color: #000;
+        }
+
+        .page {
+          min-height: 100vh;
+          background-color: #000;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 24px 16px;
+          font-family: Georgia, serif;
+          gap: 20px;
+        }
+
+        .header {
+          text-align: center;
+        }
+
+        .logo {
+          color: #fff;
+          font-size: clamp(22px, 4vw, 32px);
+          font-weight: 700;
+          letter-spacing: -0.5px;
+          margin-bottom: 6px;
+        }
+
+        .subtitle {
+          color: #aaa;
+          font-size: clamp(13px, 2vw, 15px);
+          font-family: sans-serif;
+        }
+
+        .video-wrapper {
+          width: 100%;
+          max-width: 900px;
+          height: 70vh;
+        }
+
+        .video-wrapper video {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          border-radius: 12px;
+          background-color: #111;
+          display: block;
+        }
+
+        .cta-button {
+          display: inline-block;
+          padding: 16px 40px;
+          background-color: #fff;
+          color: #000;
+          text-decoration: none;
+          border-radius: 50px;
+          font-weight: bold;
+          font-size: clamp(14px, 2vw, 16px);
+          font-family: sans-serif;
+          transition: background-color 0.2s, color 0.2s;
+          white-space: nowrap;
+        }
+
+        .cta-button:hover {
+          background-color: #e0e0e0;
+        }
+
+        @media (max-width: 600px) {
+          .page {
+            padding: 20px 12px;
+            gap: 16px;
+          }
+
+          .video-wrapper {
+            height: 70vh;
+            width: 100%;
+          }
+
+          .cta-button {
+            width: 100%;
+            text-align: center;
+          }
+        }
+      `}</style>
+
+            <main className="page">
+                <div className="header">
+                    <h1 className="logo">Smile Forward</h1>
+                    {lead.name && (
+                        <p className="subtitle">Simulación de {lead.name}</p>
+                    )}
+                </div>
+
+                <div className="video-wrapper">
                     <video
                         controls
                         autoPlay
                         playsInline
-                        loop
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         src={videoSrc}
                     />
                 </div>
 
-                <div style={{ marginTop: '40px' }}>
-                    <a
-                        href="mailto:contacto@dentalcorbella.com?subject=Reserva%20de%20cita%20Smile%20Forward"
-                        style={{
-                            display: 'inline-block',
-                            padding: '18px 40px',
-                            backgroundColor: '#fff',
-                            color: '#000',
-                            textDecoration: 'none',
-                            borderRadius: '50px',
-                            fontWeight: '700',
-                            fontSize: '16px',
-                            transition: 'transform 0.2s ease',
-                        }}
-                    >
-                        Reservar mi cita →
-                    </a>
-                    <p style={{ color: '#555', marginTop: '20px', fontSize: '14px' }}>
-                        © {new Date().getFullYear()} Dental Corbella
-                    </p>
-                </div>
-            </div>
-        </main>
+
+                <a
+                    href="https://dentalcorbella.com/contacto"
+                    className="cta-button"
+                >
+                    Reservar mi cita →
+                </a>
+            </main >
+        </>
     )
 }
