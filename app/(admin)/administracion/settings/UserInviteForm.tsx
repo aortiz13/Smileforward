@@ -63,7 +63,11 @@ export function UserInviteForm() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="role">Rol</Label>
-                        <Select name="role" defaultValue="basic" required>
+                        <Select
+                            name="role"
+                            defaultValue="basic"
+                            required
+                        >
                             <SelectTrigger>
                                 <SelectValue placeholder="Seleccionar rol" />
                             </SelectTrigger>
