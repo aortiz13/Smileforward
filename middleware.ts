@@ -44,11 +44,6 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser();
 
-    // ─── Rutas de autenticación especiales (deben pasar sin bloqueo) ───
-    // update-password usa token de email, la sesión se establece en el cliente
-    if (request.nextUrl.pathname === "/administracion/update-password") {
-        return response;
-    }
 
     // ─── Bloquear signup público ───
     if (request.nextUrl.pathname.startsWith("/signup")) {
@@ -67,7 +62,11 @@ export async function middleware(request: NextRequest) {
     }
 
     // ─── Rutas protegidas: requieren autenticación ───
+    const isUpdatePassword = request.nextUrl.pathname === "/administracion/update-password";
     if (request.nextUrl.pathname.startsWith("/administracion") && !user) {
+        if (isUpdatePassword) {
+            return response;
+        }
         console.log("[Middleware] Unauthenticated access to protected route:", request.nextUrl.pathname, "Redirecting to /login");
         const url = request.nextUrl.clone();
         url.pathname = "/login";
