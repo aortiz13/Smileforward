@@ -919,7 +919,7 @@ export default function WidgetContainer({
                                         <div className="flex-1 w-full max-w-xl h-full flex flex-col items-center gap-2 min-h-0">
                                             <div className="w-full flex-1 min-h-0 relative">
                                                 {image && generatedImage ? (
-                                                    <div className="relative w-full h-full rounded-xl md:rounded-[2rem] overflow-hidden shadow-xl group sm:aspect-[9/16] md:aspect-auto">
+                                                    <div className="relative w-auto h-[50vh] md:h-full aspect-[9/16] md:aspect-auto mx-auto rounded-xl md:rounded-[2rem] overflow-hidden shadow-xl group">
                                                         <BeforeAfterSlider
                                                             beforeImage={image ? URL.createObjectURL(image) : (demoBeforeImage || "")}
                                                             afterImage={generatedImage}
@@ -1253,7 +1253,7 @@ export default function WidgetContainer({
 
                                             {/* Unified Slider Comparison */}
                                             {/* Unified Slider Comparison */}
-                                            <div className="flex-none w-auto h-[45vh] md:h-[55vh] aspect-[9/16] max-h-full transition-all duration-300 shadow-2xl rounded-2xl md:rounded-[2.5rem]">
+                                            <div className="flex-none w-auto h-[50vh] md:h-[55vh] aspect-[9/16] max-h-full transition-all duration-300 shadow-2xl rounded-2xl md:rounded-[2.5rem]">
                                                 <div className="relative h-full w-full rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl group">
                                                     {(image || demoBeforeImage) && generatedImage ? (
                                                         <BeforeAfterSlider
