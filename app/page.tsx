@@ -89,7 +89,7 @@ function HomeContent() {
               {t.badge}
             </div>
 
-            <h2 className="text-4xl md:text-7xl lg:text-8xl font-serif font-light tracking-tight text-black dark:text-white leading-[1.1] md:leading-[1.05]">
+            <h2 className="text-4xl md:text-7xl lg:text-8xl font-serif font-light tracking-tight text-black dark:text-white leading-[1.1] md:leading-[1.05] px-4 md:px-0">
               {t.title}
             </h2>
 
