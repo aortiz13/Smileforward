@@ -8,30 +8,35 @@
   font-weight: 100;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Editors Note';
   src: url('/fonts/Editor_sNote-Thin.ttf') format('truetype');
   font-weight: 200;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Editors Note';
   src: url('/fonts/Editor_sNote-Light.ttf') format('truetype');
   font-weight: 300;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Editors Note';
   src: url('/fonts/Editor_sNote-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Editors Note';
   src: url('/fonts/Editor_sNote-Medium.ttf') format('truetype');
   font-weight: 500;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Editors Note';
   src: url('/fonts/Editor_sNote-Bold.ttf') format('truetype');
@@ -46,24 +51,28 @@
   font-weight: 100;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Colaborate';
   src: url('/fonts/ColabLig.otf') format('opentype');
   font-weight: 300;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Colaborate';
   src: url('/fonts/ColabReg.otf') format('opentype');
   font-weight: 400;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Colaborate';
   src: url('/fonts/ColabMed.otf') format('opentype');
   font-weight: 500;
   font-style: normal;
 }
+
 @font-face {
   font-family: 'Colaborate';
   src: url('/fonts/ColabBol.otf') format('opentype');
@@ -179,5 +188,11 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }
