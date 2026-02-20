@@ -1332,7 +1332,7 @@ export default function WidgetContainer({
                                     </div>
 
                                     {/* Footer Disclaimer */}
-                                    <p className="text-[10px] md:text-sm text-zinc-400 text-center max-w-lg mx-auto leading-relaxed pt-2 md:pt-6 opacity-70">
+                                    <p className="text-[10px] md:text-sm text-zinc-400 text-center max-w-lg mx-auto leading-relaxed pt-2 md:pt-6 pb-6 md:pb-0 opacity-70">
                                         Simulación Orientativa. El resultado final depende de tu caso clínico
                                     </p>
                                 </div>
@@ -1424,7 +1424,7 @@ export default function WidgetContainer({
             </main>
 
             {/* Developer Attribution - Always Visible */}
-            <div className="absolute bottom-2 right-4 z-30 opacity-60 pointer-events-none select-none">
+            <div className="absolute bottom-1 md:bottom-2 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-4 z-30 opacity-60 pointer-events-none select-none">
                 <span className="text-[9px] uppercase tracking-[0.1em] text-zinc-400 dark:text-zinc-500 font-medium">
                     Desarrollado por Judez-Logic
                 </span>
