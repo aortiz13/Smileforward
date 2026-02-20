@@ -14,7 +14,12 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
 }) => {
     const [sliderPosition, setSliderPosition] = useState(50);
     const [isResizing, setIsResizing] = useState(false);
+    const [imagesLoaded, setImagesLoaded] = useState({ before: false, after: false });
     const containerRef = useRef<HTMLDivElement>(null);
+
+    const handleImageLoad = (type: "before" | "after") => {
+        setImagesLoaded(prev => ({ ...prev, [type]: true }));
+    };
 
     // ── Slider logic ──────────────────────────────────────────────────────
     const handleStart = () => setIsResizing(true);
@@ -62,9 +67,16 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
             <img
                 src={afterImage}
                 alt="After"
-                className="absolute inset-0 w-full h-full object-cover"
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${imagesLoaded.after ? "opacity-100" : "opacity-0"}`}
                 draggable={false}
+                onLoad={() => handleImageLoad("after")}
             />
+
+            {!imagesLoaded.before && !imagesLoaded.after && (
+                <div className="absolute inset-0 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 animate-pulse">
+                    <div className="w-8 h-8 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
+                </div>
+            )}
 
             {/* Watermark Overlay */}
             <div className="absolute inset-0 z-[5] pointer-events-none flex items-center justify-center overflow-hidden">
@@ -82,7 +94,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
 
             {/* Before Image (Foreground - Clipped) */}
             <div
-                className="absolute inset-0 overflow-hidden"
+                className={`absolute inset-0 overflow-hidden transition-opacity duration-300 ${imagesLoaded.before ? "opacity-100" : "opacity-0"}`}
                 style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
             >
                 <img
@@ -90,6 +102,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                     alt="Before"
                     className="absolute inset-0 w-full h-full object-cover"
                     draggable={false}
+                    onLoad={() => handleImageLoad("before")}
                 />
                 <div className="absolute top-4 left-4 bg-black/50 text-white px-2 py-1 rounded text-xs font-bold pointer-events-none z-10">
                     ANTES
@@ -98,7 +111,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
 
             {/* Slider Handle */}
             <div
-                className="absolute inset-y-0"
+                className={`absolute inset-y-0 transition-opacity duration-300 ${imagesLoaded.before && imagesLoaded.after ? "opacity-100" : "opacity-0"}`}
                 style={{ left: `${sliderPosition}%` }}
             >
                 {/* Vertical Line */}

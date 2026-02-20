@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
     Dialog,
     DialogContent,
@@ -10,8 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Phone, Calendar, User, ImageIcon, MonitorPlay, Download, Share2, CheckCircle2, Loader2, Archive, Trees, Home, Briefcase, Wine, Palmtree, Sparkles, Trash2 } from "lucide-react";
-import Image from "next/image";
+import {
+    Mail, Phone, User, ImageIcon, MonitorPlay, Download,
+    Share2, CheckCircle2, Loader2, Archive, Trees, Home,
+    Briefcase, Wine, Palmtree, Trash2, XCircle, AlertCircle
+} from "lucide-react";
 import { BeforeAfterSlider } from "@/components/widget/BeforeAfterSlider";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
@@ -25,154 +28,311 @@ interface LeadDetailModalProps {
     onLeadUpdated?: () => void;
 }
 
+// ─── Video generation stages (simulated progress) ──────────────────────────
+const VIDEO_STAGES = [
+    { at: 0, label: "🔍 Analizando imagen..." },
+    { at: 10, label: "🎨 Generando escena..." },
+    { at: 28, label: "🎬 Inicializando video..." },
+    { at: 45, label: "⚙️  Renderizando fotogramas..." },
+    { at: 68, label: "✨ Aplicando efectos finales..." },
+    { at: 85, label: "📦 Guardando resultado..." },
+    { at: 93, label: "🏁 Casi listo..." },
+];
+
+const TOTAL_ESTIMATED_MS = 115_000;
+const TICK_MS = 800;
+const MAX_AUTO_PROGRESS = 94;
+
 export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: LeadDetailModalProps) {
     const [loadingAction, setLoadingAction] = useState(false);
     const [generatingVideo, setGeneratingVideo] = useState(false);
     const [videoGen, setVideoGen] = useState<any>(null);
-    const [viewMode, setViewMode] = useState<'video' | 'images'>('images');
+    const [viewMode, setViewMode] = useState<"video" | "images">("images");
     const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    // Polling ref — no se destruye con re-renders
-    const pollingRef = useRef<any>(null);
+    // Progress state
+    const [videoProgress, setVideoProgress] = useState(0);
+    const [videoStage, setVideoStage] = useState("");
 
-    const scenarios = [
-        { id: 'park', label: 'Parque', icon: Trees, description: 'Exterior natural, luz de día' },
-        { id: 'home', label: 'Hogar', icon: Home, description: 'Interior cálido, entorno familiar' },
-        { id: 'office', label: 'Oficina', icon: Briefcase, description: 'Profesional, ambiente de trabajo' },
-        { id: 'dinner', label: 'Cena', icon: Wine, description: 'Social, noche, alta gama' },
-        { id: 'beach', label: 'Playa', icon: Palmtree, description: 'Vacaciones, sol y mar' },
-    ];
+    // Reset simple states when lead changes
+    useEffect(() => {
+        if (open) {
+            setSelectedScenario(null);
+            setViewMode("images");
+            setVideoProgress(0);
+            setVideoStage("");
+            setErrorMessage(null);
+            console.log(`[VideoDebug] Modal opened for Lead ID: ${lead?.id}`);
+        }
+    }, [lead?.id, open]);
+
+    // ── Refs ──────────────────────────────────────────────────────────────
+    const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const generatingRef = useRef(false);
+    const stopProgressRef = useRef<(completed?: boolean) => void>(() => { });
 
     const supabase = createClient();
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
-    // Función para iniciar polling — usa ref, no se destruye con re-renders
-    const startPolling = (generationId: string) => {
-        if (pollingRef.current) clearInterval(pollingRef.current);
-        console.log("[Polling] Starting for generation:", generationId);
+    const scenarios = [
+        { id: "park", label: "Parque", icon: Trees, description: "Exterior natural, luz de día" },
+        { id: "home", label: "Hogar", icon: Home, description: "Interior cálido, entorno familiar" },
+        { id: "office", label: "Oficina", icon: Briefcase, description: "Profesional, ambiente de trabajo" },
+        { id: "dinner", label: "Cena", icon: Wine, description: "Social, noche, alta gama" },
+        { id: "beach", label: "Playa", icon: Palmtree, description: "Vacaciones, sol y mar" },
+    ];
+
+    // ── Progress helpers ────────────────────────────────────────────────────
+
+    const stopProgress = useCallback((completed = false) => {
+        if (progressRef.current) {
+            console.log(`[VideoDebug] Stopping simulated progress. Completed? ${completed}`);
+            clearInterval(progressRef.current);
+            progressRef.current = null;
+        }
+        if (completed) {
+            setVideoProgress(100);
+            setVideoStage("✅ ¡Vídeo listo!");
+        }
+    }, []);
+
+    stopProgressRef.current = stopProgress;
+
+    const startProgress = useCallback(() => {
+        console.log("[VideoDebug] Starting simulated progress bar...");
+        stopProgress(false);
+        setVideoProgress(0);
+        setVideoStage(VIDEO_STAGES[0].label);
+
+        const increment = (MAX_AUTO_PROGRESS / (TOTAL_ESTIMATED_MS / TICK_MS));
+
+        progressRef.current = setInterval(() => {
+            setVideoProgress(prev => {
+                const next = Math.min(prev + increment, MAX_AUTO_PROGRESS);
+                const stage = [...VIDEO_STAGES].reverse().find(s => next >= s.at);
+                if (stage) setVideoStage(stage.label);
+
+                // Loguear solo saltos grandes para no saturar consola
+                if (Math.floor(next) % 10 === 0 && Math.floor(next) !== Math.floor(prev)) {
+                    // console.log(`[VideoDebug] Progress: ${Math.floor(next)}%`);
+                }
+                return next;
+            });
+        }, TICK_MS);
+    }, [stopProgress]);
+
+    // ── Polling & Cancellation ──────────────────────────────────────────────
+
+    const clearPollingInterval = useCallback(() => {
+        if (pollingRef.current) {
+            console.log("[VideoDebug] 🛑 Clearing Polling Interval.");
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+        }
+    }, []);
+
+    const startPolling = useCallback((generationId: string) => {
+        clearPollingInterval();
+        console.log(`[VideoDebug] 🚀 Start Polling for Generation ID: ${generationId}`);
+        setErrorMessage(null);
+
+        let isPollingActive = true;
 
         pollingRef.current = setInterval(async () => {
-            try {
-                const { data, error } = await supabase.functions.invoke('check-video', {
-                    body: { generation_id: generationId }
-                });
+            if (!isPollingActive || !generatingRef.current) {
+                console.log("[VideoDebug] Polling aborted (component unmounted or stopped manually).");
+                clearPollingInterval();
+                return;
+            }
 
-                console.log("[Polling] Response:", data, "Error:", error);
+            try {
+                console.log(`[VideoDebug] Pinging check-video...`);
+                const start = Date.now();
+                const { data, error } = await supabase.functions.invoke("check-video", {
+                    body: { generation_id: generationId },
+                });
+                console.log(`[VideoDebug] Ping response in ${Date.now() - start}ms. Status: ${data?.status}`);
 
                 if (error) throw error;
 
-                if (data?.status === 'completed') {
-                    console.log("[Polling] ✅ Video ready!", data);
-                    clearInterval(pollingRef.current);
-                    pollingRef.current = null;
-                    setVideoGen(data);
+                // CASO 1: COMPLETED
+                if (data?.status === "completed") {
+                    console.log("[VideoDebug] ✅ STATUS COMPLETED DETECTED!");
+
+                    isPollingActive = false;
+                    clearPollingInterval();
+
+                    console.log("[VideoDebug] Forcing progress to 100%...");
+                    stopProgressRef.current(true);
+
+                    setVideoProgress(100);
+                    setVideoStage("✅ Finalizando...");
+
+                    setTimeout(() => {
+                        console.log("[VideoDebug] Timeout finished. Switching UI to Video View.");
+                        if (generatingRef.current) {
+                            generatingRef.current = false;
+                            setGeneratingVideo(false);
+                            setVideoGen(data);
+                            setViewMode("video");
+                            toast.success("¡Vídeo generado con éxito! 🎉");
+                            onLeadUpdated?.();
+                        }
+                    }, 800);
+
+                    // CASO 2: ERROR/FAILED
+                } else if (data?.status === "error" || data?.status === "failed") {
+                    console.error("[VideoDebug] ❌ STATUS FAILED/ERROR:", data);
+
+                    isPollingActive = false;
+                    clearPollingInterval();
+                    stopProgressRef.current(false);
+                    generatingRef.current = false;
                     setGeneratingVideo(false);
-                    setViewMode('video');
-                    toast.success("¡Vídeo generado con éxito! 🎉");
-                    onLeadUpdated?.();
-                } else if (data?.status === 'error' || data?.status === 'failed') {
-                    console.error("[Polling] ❌ Video failed:", data);
-                    clearInterval(pollingRef.current);
-                    pollingRef.current = null;
-                    setGeneratingVideo(false);
+
+                    const errorMsg = data.error?.message || data.metadata?.error?.message || "Error desconocido";
+                    setErrorMessage(errorMsg);
                     toast.error("Error al generar vídeo");
                     onLeadUpdated?.();
+                } else {
+                    console.log(`[VideoDebug] Still processing... (Status: ${data?.status})`);
                 }
+
             } catch (err) {
-                console.error("[Polling] Error:", err);
+                console.error("[VideoDebug] Network Error during poll (ignoring):", err);
             }
-        }, 5000);
+        }, 4000);
+    }, [clearPollingInterval, supabase, onLeadUpdated]);
+
+    // Función para cancelar
+    const handleCancelGeneration = async () => {
+        if (!videoGen?.id) return;
+
+        console.log("[VideoDebug] User requested cancellation.");
+        clearPollingInterval();
+        stopProgress(false);
+        setGeneratingVideo(false);
+        generatingRef.current = false;
+        toast.info("Cancelando generación...");
+
+        try {
+            await supabase.functions.invoke("cancel-video", {
+                body: { generation_id: videoGen.id }
+            });
+            console.log("[VideoDebug] Cancel request sent to server successfully.");
+            setErrorMessage("Generación cancelada por el usuario.");
+            toast.success("Generación cancelada");
+        } catch (e) {
+            console.error("[VideoDebug] Error sending cancel request:", e);
+            toast.error("No se pudo cancelar en el servidor (pero se detuvo localmente)");
+        }
     };
 
-    // Cleanup al desmontar
+    // ── Cleanup ──────────────────────────────────────────────────────────
     useEffect(() => {
         return () => {
-            if (pollingRef.current) clearInterval(pollingRef.current);
+            console.log("[VideoDebug] Component Unmounting - Cleaning up all intervals.");
+            clearPollingInterval();
+            stopProgress(false);
+            generatingRef.current = false;
         };
-    }, []);
+    }, [clearPollingInterval, stopProgress]);
 
-    // Sincronizar con datos del lead (prop)
+    // ── Sync with lead prop ───────────────────────────────────────────────
     useEffect(() => {
-        if (lead && open) {
-            // No sobreescribir si ya tenemos un video completado localmente
-            if (videoGen?.status === 'completed') return;
+        if (!lead || !open) return;
 
-            const video = lead.generations?.find((g: any) => g.type === 'video' && g.status === 'completed');
-            const pendingVideo = lead.generations?.find((g: any) => g.type === 'video' && (
-                g.status === 'pending' ||
-                g.status === 'processing' ||
-                g.status === 'processing_video' ||
-                g.status === 'processing_video_veo'
-            ));
+        const completedVideo = lead.generations?.find(
+            (g: any) => g.type === "video" && g.status === "completed"
+        );
+        const pendingVideo = lead.generations?.find(
+            (g: any) =>
+                g.type === "video" &&
+                ["pending", "processing", "processing_video", "processing_video_veo", "initializing"].includes(g.status)
+        );
 
-            if (video) {
-                setVideoGen(video);
-                setGeneratingVideo(false);
-            } else if (pendingVideo) {
-                // Solo iniciar polling si no hay uno ya activo
-                if (!pollingRef.current) {
-                    setVideoGen(pendingVideo);
-                    setGeneratingVideo(true);
-                    startPolling(pendingVideo.id);
-                }
-            } else {
-                setVideoGen(null);
-                setGeneratingVideo(false);
-            }
+        console.log(`[VideoDebug] Syncing Lead State. Completed: ${!!completedVideo}, Pending: ${!!pendingVideo}`);
+
+        clearPollingInterval();
+        stopProgress(false);
+
+        if (completedVideo) {
+            console.log("[VideoDebug] Found completed video. Showing result.");
+            setVideoGen(completedVideo);
+            setGeneratingVideo(false);
+            generatingRef.current = false;
+        } else if (pendingVideo) {
+            console.log(`[VideoDebug] Found pending video (ID: ${pendingVideo.id}). Resuming polling.`);
+            setVideoGen(pendingVideo);
+            setGeneratingVideo(true);
+            generatingRef.current = true;
+            startProgress();
+            startPolling(pendingVideo.id);
+        } else {
+            setVideoGen(null);
+            setGeneratingVideo(false);
+            generatingRef.current = false;
         }
-    }, [lead, open]);
+    }, [lead?.id, open]);
 
     if (!lead) return null;
 
+    // ── Handlers ──────────────────────────────────────────────────────────
+
     const handleGenerateVideo = async () => {
         if (!lead.id) return;
+
+        console.log("[VideoDebug] User clicked Generate Video.");
         setGeneratingVideo(true);
-        toast.info("Iniciando generación de vídeo...", {
-            description: "Estamos procesando tu solicitud. Recibirás una notificación cuando el vídeo esté listo."
-        });
+        generatingRef.current = true;
+        setErrorMessage(null);
+        startProgress();
+
+        toast.info("Iniciando generación de vídeo...");
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) throw new Error("No hay sesión activa");
 
-            const { data, error } = await supabase.functions.invoke('generate-video', {
+            const { data, error } = await supabase.functions.invoke("generate-video", {
                 body: {
                     lead_id: lead.id,
-                    scenario_id: selectedScenario === 'automatic' ? null : selectedScenario
+                    scenario_id: selectedScenario === "automatic" ? null : selectedScenario,
                 },
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`
-                }
+                headers: { Authorization: `Bearer ${session.access_token}` },
             });
 
             if (error) throw error;
 
-            console.log("[LeadDetailModal] Video generation initiated:", data);
-            const newVideoGen = { id: data.generation_id, status: 'initializing' };
+            console.log("[VideoDebug] Generate API Success. New Gen ID:", data.generation_id);
+            const newVideoGen = { id: data.generation_id, status: "initializing" };
             setVideoGen(newVideoGen);
-            startPolling(data.generation_id); // ← inicia polling con ref
+            startPolling(data.generation_id);
         } catch (error: any) {
+            console.error("[VideoDebug] Generate API Failed:", error);
+            stopProgress(false);
             setGeneratingVideo(false);
+            generatingRef.current = false;
             toast.error("Error al iniciar generación: " + error.message);
-            console.error(error);
         }
     };
 
+    // ... (El resto de handlers: handleMarkContacted, handleDeleteLead, handleWhatsApp se mantienen igual) ...
     const handleMarkContacted = async () => {
         if (!lead) return;
         setLoadingAction(true);
         try {
             const { error } = await supabase
-                .from('leads')
-                .update({ status: 'contacted' })
-                .eq('id', lead.id);
-
+                .from("leads")
+                .update({ status: "contacted" })
+                .eq("id", lead.id);
             if (error) throw error;
-
             toast.success("Lead marcado como contactado");
-            if (onLeadUpdated) onLeadUpdated();
+            onLeadUpdated?.();
             onOpenChange(false);
         } catch (error: any) {
             toast.error("Error al actualizar estado");
@@ -189,7 +349,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
             const result = await deleteLeadAction(lead.id);
             if (result.success) {
                 toast.success("Lead eliminado correctamente");
-                if (onLeadUpdated) onLeadUpdated();
+                onLeadUpdated?.();
                 onOpenChange(false);
             } else {
                 toast.error(result.error || "Error al eliminar el lead");
@@ -205,25 +365,24 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
 
     const handleWhatsApp = () => {
         if (!lead.phone) return;
-        const cleanNumber = lead.phone.replace(/\+/g, '').replace(/\s+/g, '').replace(/-/g, '');
-        window.open(`https://wa.me/${cleanNumber}`, '_blank');
+        const clean = lead.phone.replace(/\+/g, "").replace(/\s+/g, "").replace(/-/g, "");
+        window.open(`https://wa.me/${clean}`, "_blank");
     };
+
 
     const StatusBadge = ({ status }: { status: string }) => {
         const styles: Record<string, string> = {
             pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
             contacted: "bg-blue-100 text-blue-800 border-blue-200",
             converted: "bg-green-100 text-green-800 border-green-200",
-            rejected: "bg-red-100 text-red-800 border-red-200"
+            rejected: "bg-red-100 text-red-800 border-red-200",
         };
-
         const labels: Record<string, string> = {
             pending: "Pendiente",
             contacted: "Contactado",
             converted: "Convertido",
-            rejected: "Rechazado"
+            rejected: "Rechazado",
         };
-
         return (
             <Badge variant="outline" className={`${styles[status] || styles.pending} text-sm px-3 py-1`}>
                 {labels[status] || status}
@@ -231,12 +390,18 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
         );
     };
 
-    // Find linked generation (prioritize image)
-    const generation = lead.generations?.find((g: any) => g.type === 'image' && g.status === 'completed');
+    const generation = lead.generations?.find(
+        (g: any) => g.type === "image" && g.status === "completed"
+    );
+
+    const isVideoCompleted = videoGen?.status === "completed";
+    const canGenerate = !generatingVideo && !isVideoCompleted && !!selectedScenario;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-[95vw] md:max-w-[1400px] w-full h-[90vh] sm:h-[80vh] overflow-hidden flex flex-col p-0 gap-0">
+
+                {/* Header */}
                 <div className="p-6 border-b flex-none bg-background">
                     <DialogHeader className="flex flex-row items-center justify-between space-y-0">
                         <div>
@@ -253,10 +418,11 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 flex-1 overflow-hidden">
-                    {/* Left Column: Details */}
+
+                    {/* Left Column */}
                     <div className="col-span-12 md:col-span-5 border-r bg-muted/10 p-8 space-y-8 overflow-y-auto">
 
-                        {/* Contact Card */}
+                        {/* Contact */}
                         <div className="space-y-4">
                             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
                                 Contacto
@@ -273,9 +439,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                         </a>
                                     </div>
                                 </div>
-
                                 <Separator />
-
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
                                         <Phone className="w-5 h-5" />
@@ -290,37 +454,41 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                             </div>
                         </div>
 
-                        {/* Preferencias del Paciente */}
+                        {/* Survey Data */}
                         {lead.survey_data && Object.keys(lead.survey_data).length > 0 && (
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
                                     Preferencias (Cuestionario)
                                 </h3>
                                 <div className="grid grid-cols-2 gap-3">
+                                    {/* ... Survey cards ... */}
                                     <div className="bg-card rounded-lg border p-3 shadow-sm">
                                         <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Rango de Edad</p>
                                         <p className="text-sm font-semibold">
-                                            {lead.survey_data.ageRange === '18-30' ? '18 - 30 (Joven)' :
-                                                lead.survey_data.ageRange === '30-55' ? '30 - 55 (Media)' :
-                                                    lead.survey_data.ageRange === '55+' ? '55+ (Senior)' : lead.survey_data.ageRange}
+                                            {lead.survey_data.ageRange === "18-30" ? "18 - 30 (Joven)"
+                                                : lead.survey_data.ageRange === "30-55" ? "30 - 55 (Media)"
+                                                    : lead.survey_data.ageRange === "55+" ? "55+ (Senior)"
+                                                        : lead.survey_data.ageRange}
                                         </p>
                                     </div>
                                     <div className="bg-card rounded-lg border p-3 shadow-sm">
                                         <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Objetivo</p>
                                         <p className="text-sm font-semibold">
-                                            {lead.survey_data.improvementGoal === 'alignment' ? 'Alineación' :
-                                                lead.survey_data.improvementGoal === 'veneers' ? 'Carillas' :
-                                                    lead.survey_data.improvementGoal === 'implants' ? 'Implantes' :
-                                                        lead.survey_data.improvementGoal === 'full_smile' ? 'Sonrisa Completa' :
-                                                            lead.survey_data.improvementGoal === 'whitening' ? 'Blanqueamiento' : lead.survey_data.improvementGoal}
+                                            {lead.survey_data.improvementGoal === "alignment" ? "Alineación"
+                                                : lead.survey_data.improvementGoal === "veneers" ? "Carillas"
+                                                    : lead.survey_data.improvementGoal === "implants" ? "Implantes"
+                                                        : lead.survey_data.improvementGoal === "full_smile" ? "Sonrisa Completa"
+                                                            : lead.survey_data.improvementGoal === "whitening" ? "Blanqueamiento"
+                                                                : lead.survey_data.improvementGoal}
                                         </p>
                                     </div>
                                     <div className="bg-card rounded-lg border p-3 shadow-sm">
                                         <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Plazo</p>
                                         <p className="text-sm font-semibold">
-                                            {lead.survey_data.timeframe === 'now' ? 'Ahora mismo' :
-                                                lead.survey_data.timeframe === '1-3_months' ? '1 - 3 meses' :
-                                                    lead.survey_data.timeframe === 'later' ? 'Más adelante' : lead.survey_data.timeframe}
+                                            {lead.survey_data.timeframe === "now" ? "Ahora mismo"
+                                                : lead.survey_data.timeframe === "1-3_months" ? "1 - 3 meses"
+                                                    : lead.survey_data.timeframe === "later" ? "Más adelante"
+                                                        : lead.survey_data.timeframe}
                                         </p>
                                     </div>
                                     <div className="bg-card rounded-lg border p-3 shadow-sm">
@@ -337,60 +505,125 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                 Acciones Rápidas
                             </h3>
                             <div className="grid gap-3">
-                                <Button
-                                    className="w-full bg-green-600 hover:bg-green-700 font-bold"
-                                    size="lg"
-                                    onClick={handleWhatsApp}
-                                >
+                                <Button className="w-full bg-green-600 hover:bg-green-700 font-bold" size="lg" onClick={handleWhatsApp}>
                                     <Share2 className="w-4 h-4 mr-2" />
                                     Contactar por WhatsApp
                                 </Button>
 
                                 {generation && (
                                     <div className="space-y-4 pt-2">
+                                        {/* Scenario selector */}
                                         <div className="space-y-2">
-                                            <p className="text-[10px] text-muted-foreground uppercase font-bold px-1">Escenario del Vídeo</p>
+                                            <p className="text-[10px] text-muted-foreground uppercase font-bold px-1">
+                                                Escenario del Vídeo
+                                            </p>
                                             <div className="grid grid-cols-3 gap-2">
                                                 {scenarios.map((s) => (
                                                     <button
                                                         key={s.id}
                                                         onClick={() => setSelectedScenario(s.id)}
-                                                        disabled={generatingVideo || (videoGen && videoGen.status === 'completed')}
+                                                        disabled={generatingVideo || isVideoCompleted}
                                                         className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${selectedScenario === s.id
-                                                            ? 'bg-primary/10 border-primary text-primary shadow-sm'
-                                                            : 'bg-card border-muted hover:border-primary/50 text-muted-foreground'
-                                                            } ${(generatingVideo || (videoGen && videoGen.status === 'completed')) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                            ? "bg-primary/10 border-primary text-primary shadow-sm"
+                                                            : "bg-card border-muted hover:border-primary/50 text-muted-foreground"
+                                                            } ${(generatingVideo || isVideoCompleted) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                                                     >
-                                                        <s.icon className={`w-5 h-5 mb-1 ${selectedScenario === s.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                                                        <s.icon className={`w-5 h-5 mb-1 ${selectedScenario === s.id ? "text-primary" : "text-muted-foreground"}`} />
                                                         <span className="text-[10px] font-bold truncate w-full text-center">{s.label}</span>
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
 
-                                        <Button
-                                            className="w-full bg-primary font-bold"
-                                            size="lg"
-                                            onClick={handleGenerateVideo}
-                                            disabled={generatingVideo || (videoGen && videoGen.status === 'completed') || !selectedScenario}
-                                        >
-                                            {generatingVideo ? (
-                                                <>
-                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                    Generando Vídeo...
-                                                </>
-                                            ) : videoGen && videoGen.status === 'completed' ? (
-                                                <>
-                                                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                                                    Vídeo Generado
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <MonitorPlay className="w-4 h-4 mr-2" />
-                                                    Generar Vídeo Smile
-                                                </>
+                                        {/* Error Message */}
+                                        {errorMessage && (
+                                            <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2 text-red-800 text-sm animate-in fade-in slide-in-from-top-2">
+                                                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                                <div className="w-full break-words">
+                                                    <p className="font-bold">Generación detenida</p>
+                                                    <p className="opacity-90 text-xs mt-1">{errorMessage}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Progress/Generate Button */}
+                                        <div className="relative group">
+                                            <button
+                                                onClick={handleGenerateVideo}
+                                                disabled={!canGenerate}
+                                                className={`
+                                                    relative w-full h-11 rounded-md overflow-hidden font-bold text-sm
+                                                    transition-all duration-300 select-none
+                                                    ${isVideoCompleted
+                                                        ? "bg-green-600 text-white cursor-default"
+                                                        : canGenerate
+                                                            ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                                                            : "bg-muted text-muted-foreground cursor-not-allowed"
+                                                    }
+                                                `}
+                                            >
+                                                {generatingVideo && (
+                                                    <>
+                                                        <span className="absolute inset-0 bg-black/20" />
+                                                        <span
+                                                            className="absolute inset-y-0 left-0 bg-white/20 transition-all duration-700 ease-linear"
+                                                            style={{ width: `${videoProgress}%` }}
+                                                        />
+                                                    </>
+                                                )}
+
+                                                <span className="relative z-10 flex items-center justify-between px-4 h-full">
+                                                    {generatingVideo ? (
+                                                        <>
+                                                            <span className="flex items-center gap-2">
+                                                                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                                                                <span className="truncate">{videoStage || "Iniciando..."}</span>
+                                                            </span>
+                                                            <span className="text-xs font-mono opacity-80 shrink-0 ml-2 tabular-nums">
+                                                                {Math.round(videoProgress)}%
+                                                            </span>
+                                                        </>
+                                                    ) : isVideoCompleted ? (
+                                                        <span className="flex items-center gap-2 w-full justify-center">
+                                                            <CheckCircle2 className="w-4 h-4" />
+                                                            Vídeo Generado
+                                                        </span>
+                                                    ) : (
+                                                        <span className="flex items-center gap-2 w-full justify-center">
+                                                            <MonitorPlay className="w-4 h-4" />
+                                                            Generar Vídeo Smile
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </button>
+
+                                            {/* Cancel Button */}
+                                            {generatingVideo && (
+                                                <div className="absolute -right-10 top-0 h-full flex items-center">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-full"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleCancelGeneration();
+                                                        }}
+                                                        title="Cancelar generación"
+                                                    >
+                                                        <XCircle className="w-5 h-5" />
+                                                    </Button>
+                                                </div>
                                             )}
-                                        </Button>
+                                        </div>
+
+                                        {generatingVideo && (
+                                            <div className="w-full h-1 bg-muted rounded-full overflow-hidden -mt-1">
+                                                <div
+                                                    className="h-full bg-primary rounded-full transition-all duration-700 ease-linear"
+                                                    style={{ width: `${videoProgress}%` }}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -399,11 +632,14 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                         variant="outline"
                                         className="w-full"
                                         onClick={handleMarkContacted}
-                                        disabled={loadingAction || lead.status === 'contacted'}
+                                        disabled={loadingAction || lead.status === "contacted"}
                                     >
-                                        {loadingAction ? <Loader2 className="w-4 h-4 animate-spin" /> :
-                                            lead.status === 'contacted' ? <CheckCircle2 className="w-4 h-4 mr-2" /> : null}
-                                        {lead.status === 'contacted' ? "Contactado" : "Marcar Contactado"}
+                                        {loadingAction ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : lead.status === "contacted" ? (
+                                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                                        ) : null}
+                                        {lead.status === "contacted" ? "Contactado" : "Marcar Contactado"}
                                     </Button>
                                     <Button
                                         variant="destructive"
@@ -423,51 +659,41 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                         </div>
                     </div>
 
-                    {/* Deletion Confirmation Dialog */}
+                    {/* Delete Confirmation Dialog */}
                     <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
                         <DialogContent className="max-w-md">
                             <DialogHeader>
                                 <DialogTitle>¿Estás completamente seguro?</DialogTitle>
                                 <DialogDescription>
-                                    Esta acción no se puede deshacer. Esto eliminará permanentemente al lead
-                                    <strong> {lead.name}</strong>, todos sus resultados de análisis y las imágenes/vídeos generados.
+                                    Esta acción no se puede deshacer.
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="flex justify-end gap-3 mt-4">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setShowDeleteConfirm(false)}
-                                    disabled={deleting}
-                                >
+                                <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
                                     Cancelar
                                 </Button>
-                                <Button
-                                    variant="destructive"
-                                    onClick={handleDeleteLead}
-                                    disabled={deleting}
-                                >
-                                    {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                                    Eliminar Definitivamente
+                                <Button variant="destructive" onClick={handleDeleteLead} disabled={deleting}>
+                                    {deleting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                                    Eliminar
                                 </Button>
                             </div>
                         </DialogContent>
                     </Dialog>
 
-                    {/* Right Column: Visual Result */}
+                    {/* Right Column */}
                     <div className="col-span-12 md:col-span-7 bg-zinc-950 p-4 relative flex flex-col items-center overflow-hidden">
 
-                        {/* Selector de Vista (Toggle) */}
-                        {videoGen && videoGen.status === 'completed' && (
+                        {isVideoCompleted && (
                             <div className="absolute top-6 left-6 z-30 flex bg-white/10 backdrop-blur-md p-1 rounded-full border border-white/10">
                                 <button
-                                    onClick={() => setViewMode('images')}
-                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === 'images' ? 'bg-white text-black shadow-lg' : 'text-white/70 hover:text-white'}`}
+                                    onClick={() => setViewMode("images")}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === "images" ? "bg-white text-black shadow-lg" : "text-white/70 hover:text-white"}`}
                                 >
                                     <ImageIcon className="w-3.5 h-3.5 inline mr-1.5" /> Imágenes
                                 </button>
                                 <button
-                                    onClick={() => setViewMode('video')}
-                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === 'video' ? 'bg-white text-black shadow-lg' : 'text-white/70 hover:text-white'}`}
+                                    onClick={() => setViewMode("video")}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/70 hover:text-white"}`}
                                 >
                                     <MonitorPlay className="w-3.5 h-3.5 inline mr-1.5" /> Video
                                 </button>
@@ -475,12 +701,12 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                         )}
 
                         <div className="w-full h-full flex items-center justify-center pt-8">
-                            {viewMode === 'images' ? (
+                            {viewMode === "images" ? (
                                 generation ? (
                                     <>
                                         <div className="relative w-full h-full flex items-center justify-center">
-                                            {generation.input_path && generation.input_path !== 'unknown' ? (
-                                                <div className="relative h-[90%] w-auto aspect-[9/16] rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl group">
+                                            {generation.input_path && generation.input_path !== "unknown" ? (
+                                                <div className="relative h-[90%] w-auto aspect-[9/16] rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl">
                                                     <BeforeAfterSlider
                                                         beforeImage={generation.input_path}
                                                         afterImage={generation.output_path}
@@ -495,11 +721,6 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                                 />
                                             )}
                                         </div>
-                                        <div className="absolute bottom-6 right-6 flex gap-2 z-10">
-                                            <Button size="icon" variant="secondary" className="rounded-full bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md transition-all">
-                                                <Download className="w-4 h-4" />
-                                            </Button>
-                                        </div>
                                     </>
                                 ) : (
                                     <div className="text-center text-muted-foreground p-8">
@@ -508,7 +729,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                     </div>
                                 )
                             ) : (
-                                videoGen && videoGen.status === 'completed' && (
+                                isVideoCompleted && (
                                     <div className="relative h-[90%] w-auto aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black">
                                         <video
                                             key={videoGen.output_path}
@@ -525,7 +746,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                                 size="sm"
                                                 variant="secondary"
                                                 className="h-8 rounded-full bg-black/50 backdrop-blur-md border-white/10 text-xs"
-                                                onClick={() => setViewMode('images')}
+                                                onClick={() => setViewMode("images")}
                                             >
                                                 Cerrar Video
                                             </Button>
