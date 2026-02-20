@@ -78,7 +78,7 @@ function HomeContent() {
         </header>
       )}
 
-      <main className={`flex-1 flex flex-col items-center overflow-x-hidden ${isWidgetMode
+      <main className={`flex-1 flex flex-col items-center ${isWidgetMode
         ? 'justify-center p-0'
         : 'justify-start pt-20 px-0 md:px-8 gap-12 md:gap-16 pb-12 md:pb-24'
         }`}>
