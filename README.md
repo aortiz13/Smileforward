@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 # 😁 Smile Forward — Smart Smile
 
@@ -115,23 +115,23 @@ generando imágenes y videos con **Google Gemini AI** a partir de una selfie.
 
 ## 🧰 Stack Tecnológico
 
-| Categoría          | Tecnología                                      |
-|--------------------|--------------------------------------------------|
-| **Framework**      | Next.js 16.1.6 (App Router, Server Actions)      |
-| **UI Library**     | React 19.2.3                                     |
-| **Estilos**        | Tailwind CSS 4 + tw-animate-css                  |
-| **Componentes UI** | shadcn/ui (Radix UI primitives)                  |
-| **Animaciones**    | Framer Motion 12                                 |
-| **Backend**        | Supabase (PostgreSQL + Edge Functions + Storage) |
-| **AI - Imágenes**  | Google Gemini API (gemini-3-pro, gemini-2.5-flash)|
-| **AI - Video**     | Google Veo (via Gemini API)                      |
-| **Face Detection** | MediaPipe Face Landmarker (client-side)          |
-| **OCR**            | Tesseract.js 7 (si requerido)                    |
-| **Email**          | Resend                                           |
-| **Gráficos**       | Recharts                                         |
-| **QR Code**        | react-qr-code                                    |
-| **CAPTCHA**        | Cloudflare Turnstile                             |
-| **Build Tool**     | Docker (multi-stage build)                       |
+| Categoría | Tecnología |
+|---|---|
+| **Framework** | Next.js 16.1.6 (App Router, Server Actions) |
+| **UI Library** | React 19.2.3 |
+| **Estilos** | Tailwind CSS 4 + tw-animate-css |
+| **Componentes UI** | shadcn/ui (Radix UI primitives) |
+| **Animaciones** | Framer Motion 12 |
+| **Backend** | Supabase (PostgreSQL + Edge Functions + Storage) |
+| **AI - Imágenes** | Google Gemini API (gemini-3-pro, gemini-2.5-flash) |
+| **AI - Video** | Google Veo (via Gemini API) |
+| **Face Detection** | MediaPipe Face Landmarker (client-side) |
+| **OCR** | Tesseract.js 7 (si requerido) |
+| **Email** | Resend |
+| **Gráficos** | Recharts |
+| **QR Code** | react-qr-code |
+| **CAPTCHA** | Cloudflare Turnstile |
+| **Build Tool** | Docker (multi-stage build) |
 
 ---
 
@@ -272,12 +272,14 @@ La base de datos es **PostgreSQL** gestionada por Supabase. Las migraciones se e
 ### Detalle de Tablas
 
 #### `leads` — Contactos / Pacientes Potenciales
+
 - Almacena la información de cada usuario que completa el flujo del widget.
 - `survey_data` contiene respuestas del cuestionario en formato JSON (edad, motivación, etc.).
 - `status`: `pending` → `contacted` → `converted` | `rejected`.
 - `video_path`: ruta al video generado (si existe).
 
 #### `generations` — Imágenes y Videos Generados
+
 - Registra cada generación de imagen o video vinculada a un lead.
 - `type`: `image` | `video`.
 - `status`: `processing` → `completed` | `failed`.
@@ -285,16 +287,19 @@ La base de datos es **PostgreSQL** gestionada por Supabase. Las migraciones se e
 - `metadata`: JSON con detalles del escenario, modelo utilizado, etc.
 
 #### `analysis_results` — Resultados del Análisis Facial
+
 - Almacena el análisis dental completo generado por Gemini.
 - `result`: JSON con plan de restauración, tonos VITA, variaciones, instrucciones de generación.
 - **Importante:** Las instrucciones de generación (prompts secretos) se almacenan aquí y NO se envían al cliente. El cliente solo recibe un `analysis_id` que la Edge Function usa para recuperar el prompt completo.
 
 #### `audit_logs` — Logs de Auditoría
+
 - Registra acciones del sistema: validaciones de IA, generaciones, errores.
 - `action`: tipo de evento (ej: `AI_VALIDATION_RESULT`, `AI_SMILE_GENERATION_ERROR`).
 - `details`: JSON con contexto completo del evento.
 
 #### `api_usage_logs` — Uso de API
+
 - Tracking de llamadas a APIs externas (Gemini, etc.) para monitoreo de consumo.
 - `service_name`: identificador del servicio (ej: `GEMINI_VISION_ANALYSIS`).
 
@@ -718,6 +723,7 @@ El proyecto tiene `ignoreBuildErrors: true` en `next.config.ts` para TypeScript 
 ### Error de CORS
 
 Las Edge Functions tienen headers CORS habilitados (`Access-Control-Allow-Origin: *`). Si hay problemas:
+
 - Verificar que la URL de Supabase sea la correcta.
 - Confirmar que las funciones estén desplegadas con `--no-verify-jwt`.
 
@@ -759,4 +765,3 @@ Asegurar que se use el parámetro `?embed=widget` en la URL del iframe:
 **Desarrollado para [Dental Corbella](https://dentalcorbella.com)** | Smart Smile © 2024-2026
 
 </div>
-]]>
