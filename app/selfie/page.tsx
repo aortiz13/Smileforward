@@ -10,7 +10,7 @@ import Image from "next/image";
 import { RefreshCcw, Check, Aperture, Smartphone } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { updateSelfieSession } from "@/app/actions/selfie";
-import { uploadScan } from "@/app/services/storage";
+import { uploadScan } from "@/lib/services/storage";
 
 function SelfiePageContent() {
     const searchParams = useSearchParams();

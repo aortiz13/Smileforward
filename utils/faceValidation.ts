@@ -1,28 +1,8 @@
-import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
-
-// Singleton to avoid reloading model
-let faceLandmarker: FaceLandmarker | null = null;
-
-async function getFaceLandmarker() {
-    if (faceLandmarker) return faceLandmarker;
-
-    const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-    );
-    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-        baseOptions: {
-            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-            delegate: "GPU",
-        },
-        runningMode: "IMAGE",
-        numFaces: 2,
-    });
-    return faceLandmarker;
-}
+import { getFaceLandmarker } from "@/lib/mediapipe/faceLandmarker";
 
 export async function validateStaticImage(file: File): Promise<{ isValid: boolean; reason?: string }> {
     try {
-        const landmarker = await getFaceLandmarker();
+        const landmarker = await getFaceLandmarker("IMAGE", { numFaces: 2 });
 
         // Convert File to ImageBitmap for MediaPipe
         const image = await createImageBitmap(file);

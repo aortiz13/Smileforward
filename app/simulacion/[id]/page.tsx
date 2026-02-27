@@ -2,30 +2,35 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export default async function SimulacionPage({
-    params,
+  params,
 }: {
-    params: Promise<{ id: string }>
+  params: Promise<{ id: string }>
 }) {
-    const { id } = await params
-    const { data: lead, error } = await supabase
-        .from('leads')
-        .select('name, video_path')
-        .eq('id', id)
-        .single()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (error || !lead?.video_path) return notFound()
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error('[simulacion] Missing SUPABASE_URL or SERVICE_ROLE_KEY');
+    return notFound();
+  }
 
-    const videoSrc = `/api/video/${id}`
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    return (
-        <>
-            <style>{`
+  const { id } = await params
+  const { data: lead, error } = await supabase
+    .from('leads')
+    .select('name, video_path')
+    .eq('id', id)
+    .single()
+
+  if (error || !lead?.video_path) return notFound()
+
+  const videoSrc = `/api/video/${id}`
+
+  return (
+    <>
+      <style>{`
         * {
           box-sizing: border-box;
           margin: 0;
@@ -117,31 +122,31 @@ export default async function SimulacionPage({
         }
       `}</style>
 
-            <main className="page">
-                <div className="header">
-                    <h1 className="logo">Smile Forward</h1>
-                    {lead.name && (
-                        <p className="subtitle">Simulación de {lead.name}</p>
-                    )}
-                </div>
+      <main className="page">
+        <div className="header">
+          <h1 className="logo">Smile Forward</h1>
+          {lead.name && (
+            <p className="subtitle">Simulación de {lead.name}</p>
+          )}
+        </div>
 
-                <div className="video-wrapper">
-                    <video
-                        controls
-                        autoPlay
-                        playsInline
-                        src={videoSrc}
-                    />
-                </div>
+        <div className="video-wrapper">
+          <video
+            controls
+            autoPlay
+            playsInline
+            src={videoSrc}
+          />
+        </div>
 
 
-                <a
-                    href="https://dentalcorbella.com/contacto"
-                    className="cta-button"
-                >
-                    Reservar mi cita →
-                </a>
-            </main >
-        </>
-    )
+        <a
+          href="https://dentalcorbella.com/contacto"
+          className="cta-button"
+        >
+          Reservar mi cita →
+        </a>
+      </main >
+    </>
+  )
 }

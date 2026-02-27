@@ -57,6 +57,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
     const [videoProgress, setVideoProgress] = useState(0);
     const [videoStage, setVideoStage] = useState("");
     const [sendingVideo, setSendingVideo] = useState(false);
+    const [mobileTab, setMobileTab] = useState<"info" | "video" | "gestion">("info");
 
     // Reset simple states when lead changes
     useEffect(() => {
@@ -425,139 +426,258 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
     const isVideoCompleted = videoGen?.status === "completed";
     const canGenerate = !generatingVideo && !isVideoCompleted && !!selectedScenario;
 
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[95vw] md:max-w-[1400px] w-full h-[90vh] sm:h-[80vh] overflow-hidden flex flex-col p-0 gap-0">
+            <DialogContent className="max-w-full md:max-w-[1400px] w-full h-[100dvh] md:h-[85vh] overflow-hidden flex flex-col p-0 gap-0 rounded-none md:rounded-lg">
 
-                {/* Header */}
-                <div className="p-6 border-b flex-none bg-background">
-                    <DialogHeader className="flex flex-row items-center justify-between space-y-0">
-                        <div>
-                            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                                <User className="text-primary w-6 h-6" />
-                                {lead.name}
-                            </DialogTitle>
-                            <DialogDescription>
-                                Solicitud recibida el {new Date(lead.created_at).toLocaleDateString()}
-                            </DialogDescription>
-                        </div>
-                        <StatusBadge status={lead.status} />
-                    </DialogHeader>
-                </div>
+                {/* ═══════════════════════════════════════════════════════ */}
+                {/* ══  MOBILE LAYOUT  ═══════════════════════════════════ */}
+                {/* ═══════════════════════════════════════════════════════ */}
+                <div className="md:hidden flex flex-col h-full bg-background">
 
-                <div className="grid grid-cols-1 md:grid-cols-12 flex-1 overflow-hidden">
-
-                    {/* Left Column */}
-                    <div className="col-span-12 md:col-span-5 border-r bg-muted/10 p-8 space-y-8 overflow-y-auto">
-
-                        {/* Contact */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
-                                Contacto
-                            </h3>
-                            <div className="bg-card rounded-lg border shadow-sm p-4 space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                                        <Mail className="w-5 h-5" />
-                                    </div>
-                                    <div className="overflow-hidden">
-                                        <p className="text-xs text-muted-foreground font-medium">Correo Electrónico</p>
-                                        <a href={`mailto:${lead.email}`} className="text-sm font-semibold hover:underline truncate block">
-                                            {lead.email}
-                                        </a>
-                                    </div>
+                    {/* ── Mobile Hero: Image Preview ── */}
+                    <div className="relative bg-zinc-950 flex-none" style={{ height: '42vh' }}>
+                        {/* Compact top bar overlay */}
+                        <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between p-3 bg-gradient-to-b from-black/70 to-transparent">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
+                                    <User className="w-4 h-4 text-white" />
                                 </div>
-                                <Separator />
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                                        <Phone className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-muted-foreground font-medium">Teléfono</p>
-                                        <a href={`tel:${lead.phone}`} className="text-sm font-semibold hover:underline">
-                                            {lead.phone}
-                                        </a>
-                                    </div>
+                                <div className="min-w-0">
+                                    <p className="text-white text-sm font-bold truncate">{lead.name}</p>
+                                    <p className="text-white/60 text-[10px]">{new Date(lead.created_at).toLocaleDateString()}</p>
                                 </div>
                             </div>
+                            <StatusBadge status={lead.status} />
                         </div>
 
-                        {/* Survey Data */}
-                        {lead.survey_data && Object.keys(lead.survey_data).length > 0 && (
-                            <div className="space-y-4">
-                                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
-                                    Preferencias (Cuestionario)
-                                </h3>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {/* ... Survey cards ... */}
-                                    <div className="bg-card rounded-lg border p-3 shadow-sm">
-                                        <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Rango de Edad</p>
-                                        <p className="text-sm font-semibold">
-                                            {lead.survey_data.ageRange === "18-30" ? "18 - 30 (Joven)"
-                                                : lead.survey_data.ageRange === "30-55" ? "30 - 55 (Media)"
-                                                    : lead.survey_data.ageRange === "55+" ? "55+ (Senior)"
-                                                        : lead.survey_data.ageRange}
-                                        </p>
-                                    </div>
-                                    <div className="bg-card rounded-lg border p-3 shadow-sm">
-                                        <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Objetivo</p>
-                                        <p className="text-sm font-semibold">
-                                            {lead.survey_data.improvementGoal === "alignment" ? "Alineación"
-                                                : lead.survey_data.improvementGoal === "veneers" ? "Carillas"
-                                                    : lead.survey_data.improvementGoal === "implants" ? "Implantes"
-                                                        : lead.survey_data.improvementGoal === "full_smile" ? "Sonrisa Completa"
-                                                            : lead.survey_data.improvementGoal === "whitening" ? "Blanqueamiento"
-                                                                : lead.survey_data.improvementGoal}
-                                        </p>
-                                    </div>
-                                    <div className="bg-card rounded-lg border p-3 shadow-sm">
-                                        <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Plazo</p>
-                                        <p className="text-sm font-semibold">
-                                            {lead.survey_data.timeframe === "now" ? "Ahora mismo"
-                                                : lead.survey_data.timeframe === "1-3_months" ? "1 - 3 meses"
-                                                    : lead.survey_data.timeframe === "later" ? "Más adelante"
-                                                        : lead.survey_data.timeframe}
-                                        </p>
-                                    </div>
-                                    <div className="bg-card rounded-lg border p-3 shadow-sm">
-                                        <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Clínica</p>
-                                        <p className="text-sm font-semibold">{lead.survey_data.clinicPreference}</p>
-                                    </div>
-                                </div>
+                        {/* Image/Video toggle pills */}
+                        {isVideoCompleted && (
+                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex bg-white/10 backdrop-blur-md p-0.5 rounded-full border border-white/10">
+                                <button
+                                    onClick={() => setViewMode("images")}
+                                    className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${viewMode === "images" ? "bg-white text-black" : "text-white/70"}`}
+                                >
+                                    Antes/Después
+                                </button>
+                                <button
+                                    onClick={() => setViewMode("video")}
+                                    className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${viewMode === "video" ? "bg-white text-black" : "text-white/70"}`}
+                                >
+                                    Video
+                                </button>
                             </div>
                         )}
 
-                        {/* Actions */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
-                                Acciones Rápidas
-                            </h3>
-                            <div className="grid gap-3">
-                                <Button className="w-full bg-green-600 hover:bg-green-700 font-bold" size="lg" onClick={handleWhatsApp}>
-                                    <Share2 className="w-4 h-4 mr-2" />
-                                    Contactar por WhatsApp
-                                </Button>
+                        {/* Image content */}
+                        <div className="w-full h-full flex items-center justify-center">
+                            {viewMode === "images" ? (
+                                generation ? (
+                                    <div className="relative w-full h-full flex items-center justify-center p-2">
+                                        {generation.input_path && generation.input_path !== "unknown" ? (
+                                            <div className="relative h-full w-auto aspect-[9/16] rounded-xl overflow-hidden bg-zinc-800 shadow-2xl">
+                                                <BeforeAfterSlider
+                                                    beforeImage={generation.input_path}
+                                                    afterImage={generation.output_path}
+                                                    className="w-full h-full"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <img
+                                                src={generation.output_path}
+                                                alt="Generated Smile"
+                                                className="w-full h-full object-contain"
+                                            />
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-white/40">
+                                        <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-30" strokeWidth={1.5} />
+                                        <p className="text-xs">Sin imágenes</p>
+                                    </div>
+                                )
+                            ) : isVideoCompleted ? (
+                                <div className="relative h-full w-auto aspect-[9/16] rounded-xl overflow-hidden bg-black">
+                                    <video
+                                        key={videoGen.output_path}
+                                        src={`${supabaseUrl}/storage/v1/object/public/generated/${videoGen.output_path}`}
+                                        className="w-full h-full object-contain"
+                                        controls
+                                        autoPlay
+                                        muted
+                                        playsInline
+                                        loop
+                                    />
+                                    <Button
+                                        size="sm"
+                                        className="absolute top-2 right-2 h-7 rounded-full bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-2.5 z-30"
+                                        onClick={handleSendVideo}
+                                        disabled={sendingVideo}
+                                    >
+                                        {sendingVideo ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Mail className="w-3 h-3 mr-1" />}
+                                        Enviar
+                                    </Button>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
 
-                                {generation && (
-                                    <div className="space-y-4 pt-2">
+                    {/* ── Floating Quick Actions Bar ── */}
+                    <div className="flex-none border-b bg-background px-4 py-2.5">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleWhatsApp}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-600 text-white text-xs font-bold active:scale-95 transition-transform"
+                            >
+                                <Share2 className="w-3.5 h-3.5" />
+                                WhatsApp
+                            </button>
+                            <a
+                                href={`tel:${lead.phone}`}
+                                className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 text-blue-600 active:scale-95 transition-transform"
+                            >
+                                <Phone className="w-4 h-4" />
+                            </a>
+                            <a
+                                href={`mailto:${lead.email}`}
+                                className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-50 text-purple-600 active:scale-95 transition-transform"
+                            >
+                                <Mail className="w-4 h-4" />
+                            </a>
+                            <button
+                                onClick={handleMarkContacted}
+                                disabled={loadingAction || lead.status === "contacted"}
+                                className={`flex items-center justify-center w-10 h-10 rounded-xl active:scale-95 transition-transform ${lead.status === "contacted"
+                                    ? "bg-green-50 text-green-600"
+                                    : "bg-yellow-50 text-yellow-600"
+                                    }`}
+                            >
+                                {loadingAction ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ── Mobile Tab Bar ── */}
+                    <div className="flex-none border-b bg-background">
+                        <div className="flex">
+                            {([
+                                { id: "info" as const, label: "Información", icon: User },
+                                { id: "video" as const, label: "Video", icon: MonitorPlay },
+                                { id: "gestion" as const, label: "Gestión", icon: Briefcase },
+                            ]).map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setMobileTab(tab.id)}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${mobileTab === tab.id
+                                        ? "border-primary text-primary"
+                                        : "border-transparent text-muted-foreground"
+                                        }`}
+                                >
+                                    <tab.icon className="w-3.5 h-3.5" />
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ── Mobile Tab Content ── */}
+                    <div className="flex-1 overflow-y-auto">
+
+                        {/* ── Tab: Info ── */}
+                        {mobileTab === "info" && (
+                            <div className="p-4 space-y-4">
+                                {/* Contact compact */}
+                                <div className="bg-card rounded-xl border shadow-sm divide-y">
+                                    <a href={`mailto:${lead.email}`} className="flex items-center gap-3 p-3 active:bg-muted/20 transition-colors">
+                                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                            <Mail className="w-4 h-4" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] text-muted-foreground font-medium uppercase">Email</p>
+                                            <p className="text-sm font-semibold truncate">{lead.email}</p>
+                                        </div>
+                                    </a>
+                                    <a href={`tel:${lead.phone}`} className="flex items-center gap-3 p-3 active:bg-muted/20 transition-colors">
+                                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                            <Phone className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground font-medium uppercase">Teléfono</p>
+                                            <p className="text-sm font-semibold">{lead.phone}</p>
+                                        </div>
+                                    </a>
+                                </div>
+
+                                {/* Survey Data */}
+                                {lead.survey_data && Object.keys(lead.survey_data).length > 0 && (
+                                    <div className="space-y-2.5">
+                                        <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1">
+                                            Cuestionario
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="bg-card rounded-xl border p-3">
+                                                <p className="text-[9px] text-muted-foreground uppercase font-bold mb-0.5">Edad</p>
+                                                <p className="text-xs font-semibold">
+                                                    {lead.survey_data.ageRange === "18-30" ? "18-30"
+                                                        : lead.survey_data.ageRange === "30-55" ? "30-55"
+                                                            : lead.survey_data.ageRange === "55+" ? "55+"
+                                                                : lead.survey_data.ageRange}
+                                                </p>
+                                            </div>
+                                            <div className="bg-card rounded-xl border p-3">
+                                                <p className="text-[9px] text-muted-foreground uppercase font-bold mb-0.5">Objetivo</p>
+                                                <p className="text-xs font-semibold">
+                                                    {lead.survey_data.improvementGoal === "alignment" ? "Alineación"
+                                                        : lead.survey_data.improvementGoal === "veneers" ? "Carillas"
+                                                            : lead.survey_data.improvementGoal === "implants" ? "Implantes"
+                                                                : lead.survey_data.improvementGoal === "full_smile" ? "Sonrisa Completa"
+                                                                    : lead.survey_data.improvementGoal === "whitening" ? "Blanqueamiento"
+                                                                        : lead.survey_data.improvementGoal}
+                                                </p>
+                                            </div>
+                                            <div className="bg-card rounded-xl border p-3">
+                                                <p className="text-[9px] text-muted-foreground uppercase font-bold mb-0.5">Plazo</p>
+                                                <p className="text-xs font-semibold">
+                                                    {lead.survey_data.timeframe === "now" ? "Ahora"
+                                                        : lead.survey_data.timeframe === "1-3_months" ? "1-3 meses"
+                                                            : lead.survey_data.timeframe === "later" ? "Más adelante"
+                                                                : lead.survey_data.timeframe}
+                                                </p>
+                                            </div>
+                                            <div className="bg-card rounded-xl border p-3">
+                                                <p className="text-[9px] text-muted-foreground uppercase font-bold mb-0.5">Clínica</p>
+                                                <p className="text-xs font-semibold">{lead.survey_data.clinicPreference}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ── Tab: Video ── */}
+                        {mobileTab === "video" && (
+                            <div className="p-4 space-y-4">
+                                {generation ? (
+                                    <>
                                         {/* Scenario selector */}
-                                        <div className="space-y-2">
-                                            <p className="text-[10px] text-muted-foreground uppercase font-bold px-1">
-                                                Escenario del Vídeo
-                                            </p>
-                                            <div className="grid grid-cols-3 gap-2">
+                                        <div className="space-y-2.5">
+                                            <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1">
+                                                Escenario
+                                            </h3>
+                                            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
                                                 {scenarios.map((s) => (
                                                     <button
                                                         key={s.id}
                                                         onClick={() => setSelectedScenario(s.id)}
                                                         disabled={generatingVideo || isVideoCompleted}
-                                                        className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${selectedScenario === s.id
+                                                        className={`flex flex-col items-center justify-center min-w-[60px] p-2 rounded-xl border transition-all shrink-0 ${selectedScenario === s.id
                                                             ? "bg-primary/10 border-primary text-primary shadow-sm"
-                                                            : "bg-card border-muted hover:border-primary/50 text-muted-foreground"
-                                                            } ${(generatingVideo || isVideoCompleted) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                                            : "bg-card border-muted text-muted-foreground"
+                                                            } ${(generatingVideo || isVideoCompleted) ? "opacity-50" : ""}`}
                                                     >
                                                         <s.icon className={`w-5 h-5 mb-1 ${selectedScenario === s.id ? "text-primary" : "text-muted-foreground"}`} />
-                                                        <span className="text-[10px] font-bold truncate w-full text-center">{s.label}</span>
+                                                        <span className="text-[9px] font-bold">{s.label}</span>
                                                     </button>
                                                 ))}
                                             </div>
@@ -565,240 +685,507 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
 
                                         {/* Error Message */}
                                         {errorMessage && (
-                                            <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2 text-red-800 text-sm animate-in fade-in slide-in-from-top-2">
+                                            <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 text-red-800 text-sm">
                                                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                                                <div className="w-full break-words">
-                                                    <p className="font-bold">Generación detenida</p>
-                                                    <p className="opacity-90 text-xs mt-1">{errorMessage}</p>
+                                                <div>
+                                                    <p className="font-bold text-xs">Generación detenida</p>
+                                                    <p className="opacity-90 text-[11px] mt-0.5">{errorMessage}</p>
                                                 </div>
                                             </div>
                                         )}
 
-                                        {/* Progress/Generate Button */}
-                                        <div className="relative group">
-                                            <button
-                                                onClick={handleGenerateVideo}
-                                                disabled={!canGenerate}
-                                                className={`
-                                                    relative w-full h-11 rounded-md overflow-hidden font-bold text-sm
-                                                    transition-all duration-300 select-none
-                                                    ${isVideoCompleted
-                                                        ? "bg-green-600 text-white cursor-default"
-                                                        : canGenerate
-                                                            ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-                                                            : "bg-muted text-muted-foreground cursor-not-allowed"
-                                                    }
-                                                `}
-                                            >
-                                                {generatingVideo && (
-                                                    <>
-                                                        <span className="absolute inset-0 bg-black/20" />
-                                                        <span
-                                                            className="absolute inset-y-0 left-0 bg-white/20 transition-all duration-700 ease-linear"
-                                                            style={{ width: `${videoProgress}%` }}
-                                                        />
-                                                    </>
-                                                )}
-
-                                                <span className="relative z-10 flex items-center justify-between px-4 h-full">
-                                                    {generatingVideo ? (
-                                                        <>
-                                                            <span className="flex items-center gap-2">
-                                                                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                                                                <span className="truncate">{videoStage || "Iniciando..."}</span>
-                                                            </span>
-                                                            <span className="text-xs font-mono opacity-80 shrink-0 ml-2 tabular-nums">
-                                                                {Math.round(videoProgress)}%
-                                                            </span>
-                                                        </>
-                                                    ) : isVideoCompleted ? (
-                                                        <span className="flex items-center gap-2 w-full justify-center">
-                                                            <CheckCircle2 className="w-4 h-4" />
-                                                            Vídeo Generado
-                                                        </span>
-                                                    ) : (
-                                                        <span className="flex items-center gap-2 w-full justify-center">
-                                                            <MonitorPlay className="w-4 h-4" />
-                                                            Generar Vídeo Smile
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            </button>
-
-                                            {/* Cancel Button */}
+                                        {/* Generate / Progress button */}
+                                        <button
+                                            onClick={handleGenerateVideo}
+                                            disabled={!canGenerate}
+                                            className={`
+                                                relative w-full h-12 rounded-xl overflow-hidden font-bold text-sm
+                                                transition-all duration-300 select-none
+                                                ${isVideoCompleted
+                                                    ? "bg-green-600 text-white"
+                                                    : canGenerate
+                                                        ? "bg-primary text-primary-foreground active:scale-[0.98]"
+                                                        : "bg-muted text-muted-foreground"
+                                                }
+                                            `}
+                                        >
                                             {generatingVideo && (
-                                                <div className="absolute -right-10 top-0 h-full flex items-center">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-full"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleCancelGeneration();
-                                                        }}
-                                                        title="Cancelar generación"
-                                                    >
-                                                        <XCircle className="w-5 h-5" />
-                                                    </Button>
-                                                </div>
+                                                <>
+                                                    <span className="absolute inset-0 bg-black/20" />
+                                                    <span
+                                                        className="absolute inset-y-0 left-0 bg-white/20 transition-all duration-700 ease-linear"
+                                                        style={{ width: `${videoProgress}%` }}
+                                                    />
+                                                </>
                                             )}
-                                        </div>
+                                            <span className="relative z-10 flex items-center justify-between px-4 h-full">
+                                                {generatingVideo ? (
+                                                    <>
+                                                        <span className="flex items-center gap-2">
+                                                            <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                                                            <span className="truncate text-xs">{videoStage || "Iniciando..."}</span>
+                                                        </span>
+                                                        <span className="text-xs font-mono opacity-80 shrink-0 ml-2 tabular-nums">
+                                                            {Math.round(videoProgress)}%
+                                                        </span>
+                                                    </>
+                                                ) : isVideoCompleted ? (
+                                                    <span className="flex items-center gap-2 w-full justify-center">
+                                                        <CheckCircle2 className="w-4 h-4" />
+                                                        Vídeo Generado
+                                                    </span>
+                                                ) : (
+                                                    <span className="flex items-center gap-2 w-full justify-center">
+                                                        <MonitorPlay className="w-4 h-4" />
+                                                        Generar Vídeo Smile
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </button>
+
+                                        {/* Cancel */}
+                                        {generatingVideo && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="w-full text-xs text-muted-foreground hover:text-red-600"
+                                                onClick={handleCancelGeneration}
+                                            >
+                                                <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                                                Cancelar
+                                            </Button>
+                                        )}
 
                                         {generatingVideo && (
-                                            <div className="w-full h-1 bg-muted rounded-full overflow-hidden -mt-1">
+                                            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                                                 <div
                                                     className="h-full bg-primary rounded-full transition-all duration-700 ease-linear"
                                                     style={{ width: `${videoProgress}%` }}
                                                 />
                                             </div>
                                         )}
+                                    </>
+                                ) : (
+                                    <div className="text-center py-12 text-muted-foreground">
+                                        <MonitorPlay className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                                        <p className="text-sm">No hay imágenes generadas para crear un video.</p>
                                     </div>
                                 )}
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Button
-                                        variant="outline"
-                                        className="w-full"
-                                        onClick={handleMarkContacted}
-                                        disabled={loadingAction || lead.status === "contacted"}
-                                    >
-                                        {loadingAction ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : lead.status === "contacted" ? (
-                                            <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        ) : null}
-                                        {lead.status === "contacted" ? "Contactado" : "Marcar Contactado"}
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        className="w-full"
-                                        onClick={() => setShowDeleteConfirm(true)}
-                                        disabled={deleting}
-                                    >
-                                        <Trash2 className="w-4 h-4 mr-2" />
-                                        Eliminar Lead
-                                    </Button>
-                                    <Button variant="secondary" className="w-full">
-                                        <Archive className="w-4 h-4 mr-2" />
-                                        Archivar
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Delete Confirmation Dialog */}
-                    <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                        <DialogContent className="max-w-md">
-                            <DialogHeader>
-                                <DialogTitle>¿Estás completamente seguro?</DialogTitle>
-                                <DialogDescription>
-                                    Esta acción no se puede deshacer.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="flex justify-end gap-3 mt-4">
-                                <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
-                                    Cancelar
-                                </Button>
-                                <Button variant="destructive" onClick={handleDeleteLead} disabled={deleting}>
-                                    {deleting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                                    Eliminar
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-
-                    {/* Right Column */}
-                    <div className="col-span-12 md:col-span-7 bg-zinc-950 p-4 relative flex flex-col items-center overflow-hidden">
-
-                        {isVideoCompleted && (
-                            <div className="absolute top-6 left-6 z-30 flex bg-white/10 backdrop-blur-md p-1 rounded-full border border-white/10">
-                                <button
-                                    onClick={() => setViewMode("images")}
-                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === "images" ? "bg-white text-black shadow-lg" : "text-white/70 hover:text-white"}`}
-                                >
-                                    <ImageIcon className="w-3.5 h-3.5 inline mr-1.5" /> Imágenes
-                                </button>
-                                <button
-                                    onClick={() => setViewMode("video")}
-                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/70 hover:text-white"}`}
-                                >
-                                    <MonitorPlay className="w-3.5 h-3.5 inline mr-1.5" /> Video
-                                </button>
                             </div>
                         )}
 
-                        <div className="w-full h-full flex items-center justify-center pt-8">
-                            {viewMode === "images" ? (
-                                generation ? (
-                                    <>
-                                        <div className="relative w-full h-full flex items-center justify-center">
-                                            {generation.input_path && generation.input_path !== "unknown" ? (
-                                                <div className="relative h-[90%] w-auto aspect-[9/16] rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl">
-                                                    <BeforeAfterSlider
-                                                        beforeImage={generation.input_path}
-                                                        afterImage={generation.output_path}
-                                                        className="w-full h-full"
+                        {/* ── Tab: Gestión ── */}
+                        {mobileTab === "gestion" && (
+                            <div className="p-4 space-y-3">
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start gap-2"
+                                    onClick={handleMarkContacted}
+                                    disabled={loadingAction || lead.status === "contacted"}
+                                >
+                                    {loadingAction ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : lead.status === "contacted" ? (
+                                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                    ) : (
+                                        <CheckCircle2 className="w-4 h-4" />
+                                    )}
+                                    {lead.status === "contacted" ? "Ya contactado" : "Marcar como Contactado"}
+                                </Button>
+
+                                <Button variant="secondary" className="w-full justify-start gap-2">
+                                    <Archive className="w-4 h-4" />
+                                    Archivar Lead
+                                </Button>
+
+                                <Separator className="my-2" />
+
+                                <Button
+                                    variant="destructive"
+                                    className="w-full justify-start gap-2"
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    disabled={deleting}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Eliminar Lead
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ═══════════════════════════════════════════════════════ */}
+                {/* ══  DESKTOP LAYOUT (unchanged)  ═════════════════════ */}
+                {/* ═══════════════════════════════════════════════════════ */}
+                <div className="hidden md:flex md:flex-col flex-1 overflow-hidden">
+                    {/* Header */}
+                    <div className="p-6 border-b flex-none bg-background">
+                        <DialogHeader className="flex flex-row items-center justify-between space-y-0">
+                            <div>
+                                <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                                    <User className="text-primary w-6 h-6" />
+                                    {lead.name}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    Solicitud recibida el {new Date(lead.created_at).toLocaleDateString()}
+                                </DialogDescription>
+                            </div>
+                            <StatusBadge status={lead.status} />
+                        </DialogHeader>
+                    </div>
+
+                    <div className="grid grid-cols-12 flex-1 overflow-hidden">
+
+                        {/* Left Column */}
+                        <div className="col-span-5 border-r bg-muted/10 p-8 space-y-8 overflow-y-auto">
+
+                            {/* Contact */}
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
+                                    Contacto
+                                </h3>
+                                <div className="bg-card rounded-lg border shadow-sm p-4 space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                            <Mail className="w-5 h-5" />
+                                        </div>
+                                        <div className="overflow-hidden">
+                                            <p className="text-xs text-muted-foreground font-medium">Correo Electrónico</p>
+                                            <a href={`mailto:${lead.email}`} className="text-sm font-semibold hover:underline truncate block">
+                                                {lead.email}
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <Separator />
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                            <Phone className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-muted-foreground font-medium">Teléfono</p>
+                                            <a href={`tel:${lead.phone}`} className="text-sm font-semibold hover:underline">
+                                                {lead.phone}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Survey Data */}
+                            {lead.survey_data && Object.keys(lead.survey_data).length > 0 && (
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
+                                        Preferencias (Cuestionario)
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-card rounded-lg border p-3 shadow-sm">
+                                            <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Rango de Edad</p>
+                                            <p className="text-sm font-semibold">
+                                                {lead.survey_data.ageRange === "18-30" ? "18 - 30 (Joven)"
+                                                    : lead.survey_data.ageRange === "30-55" ? "30 - 55 (Media)"
+                                                        : lead.survey_data.ageRange === "55+" ? "55+ (Senior)"
+                                                            : lead.survey_data.ageRange}
+                                            </p>
+                                        </div>
+                                        <div className="bg-card rounded-lg border p-3 shadow-sm">
+                                            <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Objetivo</p>
+                                            <p className="text-sm font-semibold">
+                                                {lead.survey_data.improvementGoal === "alignment" ? "Alineación"
+                                                    : lead.survey_data.improvementGoal === "veneers" ? "Carillas"
+                                                        : lead.survey_data.improvementGoal === "implants" ? "Implantes"
+                                                            : lead.survey_data.improvementGoal === "full_smile" ? "Sonrisa Completa"
+                                                                : lead.survey_data.improvementGoal === "whitening" ? "Blanqueamiento"
+                                                                    : lead.survey_data.improvementGoal}
+                                            </p>
+                                        </div>
+                                        <div className="bg-card rounded-lg border p-3 shadow-sm">
+                                            <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Plazo</p>
+                                            <p className="text-sm font-semibold">
+                                                {lead.survey_data.timeframe === "now" ? "Ahora mismo"
+                                                    : lead.survey_data.timeframe === "1-3_months" ? "1 - 3 meses"
+                                                        : lead.survey_data.timeframe === "later" ? "Más adelante"
+                                                            : lead.survey_data.timeframe}
+                                            </p>
+                                        </div>
+                                        <div className="bg-card rounded-lg border p-3 shadow-sm">
+                                            <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Clínica</p>
+                                            <p className="text-sm font-semibold">{lead.survey_data.clinicPreference}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Actions */}
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
+                                    Acciones Rápidas
+                                </h3>
+                                <div className="grid gap-3">
+                                    <Button className="w-full bg-green-600 hover:bg-green-700 font-bold" size="lg" onClick={handleWhatsApp}>
+                                        <Share2 className="w-4 h-4 mr-2" />
+                                        Contactar por WhatsApp
+                                    </Button>
+
+                                    {generation && (
+                                        <div className="space-y-4 pt-2">
+                                            {/* Scenario selector */}
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] text-muted-foreground uppercase font-bold px-1">
+                                                    Escenario del Vídeo
+                                                </p>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {scenarios.map((s) => (
+                                                        <button
+                                                            key={s.id}
+                                                            onClick={() => setSelectedScenario(s.id)}
+                                                            disabled={generatingVideo || isVideoCompleted}
+                                                            className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${selectedScenario === s.id
+                                                                ? "bg-primary/10 border-primary text-primary shadow-sm"
+                                                                : "bg-card border-muted hover:border-primary/50 text-muted-foreground"
+                                                                } ${(generatingVideo || isVideoCompleted) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                                        >
+                                                            <s.icon className={`w-5 h-5 mb-1 ${selectedScenario === s.id ? "text-primary" : "text-muted-foreground"}`} />
+                                                            <span className="text-[10px] font-bold truncate w-full text-center">{s.label}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Error Message */}
+                                            {errorMessage && (
+                                                <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2 text-red-800 text-sm animate-in fade-in slide-in-from-top-2">
+                                                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                                    <div className="w-full break-words">
+                                                        <p className="font-bold">Generación detenida</p>
+                                                        <p className="opacity-90 text-xs mt-1">{errorMessage}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Progress/Generate Button */}
+                                            <div className="relative group">
+                                                <button
+                                                    onClick={handleGenerateVideo}
+                                                    disabled={!canGenerate}
+                                                    className={`
+                                                        relative w-full h-11 rounded-md overflow-hidden font-bold text-sm
+                                                        transition-all duration-300 select-none
+                                                        ${isVideoCompleted
+                                                            ? "bg-green-600 text-white cursor-default"
+                                                            : canGenerate
+                                                                ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                                                                : "bg-muted text-muted-foreground cursor-not-allowed"
+                                                        }
+                                                    `}
+                                                >
+                                                    {generatingVideo && (
+                                                        <>
+                                                            <span className="absolute inset-0 bg-black/20" />
+                                                            <span
+                                                                className="absolute inset-y-0 left-0 bg-white/20 transition-all duration-700 ease-linear"
+                                                                style={{ width: `${videoProgress}%` }}
+                                                            />
+                                                        </>
+                                                    )}
+
+                                                    <span className="relative z-10 flex items-center justify-between px-4 h-full">
+                                                        {generatingVideo ? (
+                                                            <>
+                                                                <span className="flex items-center gap-2">
+                                                                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                                                                    <span className="truncate">{videoStage || "Iniciando..."}</span>
+                                                                </span>
+                                                                <span className="text-xs font-mono opacity-80 shrink-0 ml-2 tabular-nums">
+                                                                    {Math.round(videoProgress)}%
+                                                                </span>
+                                                            </>
+                                                        ) : isVideoCompleted ? (
+                                                            <span className="flex items-center gap-2 w-full justify-center">
+                                                                <CheckCircle2 className="w-4 h-4" />
+                                                                Vídeo Generado
+                                                            </span>
+                                                        ) : (
+                                                            <span className="flex items-center gap-2 w-full justify-center">
+                                                                <MonitorPlay className="w-4 h-4" />
+                                                                Generar Vídeo Smile
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </button>
+
+                                                {/* Cancel Button */}
+                                                {generatingVideo && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="mt-2 w-full text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleCancelGeneration();
+                                                        }}
+                                                    >
+                                                        <XCircle className="w-4 h-4 mr-1.5" />
+                                                        Cancelar generación
+                                                    </Button>
+                                                )}
+                                            </div>
+
+                                            {generatingVideo && (
+                                                <div className="w-full h-1 bg-muted rounded-full overflow-hidden -mt-1">
+                                                    <div
+                                                        className="h-full bg-primary rounded-full transition-all duration-700 ease-linear"
+                                                        style={{ width: `${videoProgress}%` }}
                                                     />
                                                 </div>
-                                            ) : (
-                                                <img
-                                                    src={generation.output_path}
-                                                    alt="Generated Smile"
-                                                    className="w-full h-full object-contain"
-                                                />
                                             )}
                                         </div>
-                                    </>
-                                ) : (
-                                    <div className="text-center text-muted-foreground p-8">
-                                        <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-20" strokeWidth={1.5} />
-                                        <p>Sin imágenes disponibles</p>
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Button
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={handleMarkContacted}
+                                            disabled={loadingAction || lead.status === "contacted"}
+                                        >
+                                            {loadingAction ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : lead.status === "contacted" ? (
+                                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                            ) : null}
+                                            {lead.status === "contacted" ? "Contactado" : "Marcar Contactado"}
+                                        </Button>
+                                        <Button
+                                            variant="destructive"
+                                            className="w-full"
+                                            onClick={() => setShowDeleteConfirm(true)}
+                                            disabled={deleting}
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Eliminar Lead
+                                        </Button>
+                                        <Button variant="secondary" className="w-full">
+                                            <Archive className="w-4 h-4 mr-2" />
+                                            Archivar
+                                        </Button>
                                     </div>
-                                )
-                            ) : (
-                                isVideoCompleted && (
-                                    <div className="relative h-[90%] w-auto aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black">
-                                        <video
-                                            key={videoGen.output_path}
-                                            src={`${supabaseUrl}/storage/v1/object/public/generated/${videoGen.output_path}`}
-                                            className="w-full h-full object-contain"
-                                            controls
-                                            autoPlay
-                                            muted
-                                            playsInline
-                                            loop
-                                        />
-                                        <div className="absolute top-4 right-4 z-30 flex gap-2">
-                                            <Button
-                                                size="sm"
-                                                variant="secondary"
-                                                className="h-8 rounded-full bg-green-600 hover:bg-green-700 border-none text-white text-xs font-bold shadow-lg"
-                                                onClick={handleSendVideo}
-                                                disabled={sendingVideo}
-                                            >
-                                                {sendingVideo ? (
-                                                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                                                ) : (
-                                                    <Mail className="w-3.5 h-3.5 mr-1.5" />
-                                                )}
-                                                Enviar por Email
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="secondary"
-                                                className="h-8 rounded-full bg-black/50 backdrop-blur-md border-white/10 text-xs"
-                                                onClick={() => setViewMode("images")}
-                                            >
-                                                Cerrar Video
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Column */}
+                        <div className="col-span-7 bg-zinc-950 p-4 relative flex flex-col items-center overflow-hidden">
+                            {isVideoCompleted && (
+                                <div className="absolute top-6 left-6 z-30 flex bg-white/10 backdrop-blur-md p-1 rounded-full border border-white/10">
+                                    <button
+                                        onClick={() => setViewMode("images")}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === "images" ? "bg-white text-black shadow-lg" : "text-white/70 hover:text-white"}`}
+                                    >
+                                        <ImageIcon className="w-3.5 h-3.5 inline mr-1.5" /> Imágenes
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode("video")}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === "video" ? "bg-white text-black shadow-lg" : "text-white/70 hover:text-white"}`}
+                                    >
+                                        <MonitorPlay className="w-3.5 h-3.5 inline mr-1.5" /> Video
+                                    </button>
+                                </div>
                             )}
+
+                            <div className="w-full h-full flex items-center justify-center pt-8">
+                                {viewMode === "images" ? (
+                                    generation ? (
+                                        <>
+                                            <div className="relative w-full h-full flex items-center justify-center">
+                                                {generation.input_path && generation.input_path !== "unknown" ? (
+                                                    <div className="relative h-[90%] w-auto aspect-[9/16] rounded-[2.5rem] overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 shadow-2xl">
+                                                        <BeforeAfterSlider
+                                                            beforeImage={generation.input_path}
+                                                            afterImage={generation.output_path}
+                                                            className="w-full h-full"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <img
+                                                        src={generation.output_path}
+                                                        alt="Generated Smile"
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                )}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="text-center text-muted-foreground p-8">
+                                            <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-20" strokeWidth={1.5} />
+                                            <p>Sin imágenes disponibles</p>
+                                        </div>
+                                    )
+                                ) : (
+                                    isVideoCompleted && (
+                                        <div className="relative h-[90%] w-auto aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black">
+                                            <video
+                                                key={videoGen.output_path}
+                                                src={`${supabaseUrl}/storage/v1/object/public/generated/${videoGen.output_path}`}
+                                                className="w-full h-full object-contain"
+                                                controls
+                                                autoPlay
+                                                muted
+                                                playsInline
+                                                loop
+                                            />
+                                            <div className="absolute top-4 right-4 z-30 flex gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="secondary"
+                                                    className="h-8 rounded-full bg-green-600 hover:bg-green-700 border-none text-white text-xs font-bold shadow-lg"
+                                                    onClick={handleSendVideo}
+                                                    disabled={sendingVideo}
+                                                >
+                                                    {sendingVideo ? (
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                                                    ) : (
+                                                        <Mail className="w-3.5 h-3.5 mr-1.5" />
+                                                    )}
+                                                    Enviar por Email
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="secondary"
+                                                    className="h-8 rounded-full bg-black/50 backdrop-blur-md border-white/10 text-xs"
+                                                    onClick={() => setViewMode("images")}
+                                                >
+                                                    Cerrar Video
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                {/* Delete Confirmation Dialog (shared) */}
+                <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                    <DialogContent className="max-w-[90vw] sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>¿Estás completamente seguro?</DialogTitle>
+                            <DialogDescription>
+                                Esta acción no se puede deshacer.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex justify-end gap-3 mt-4">
+                            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
+                                Cancelar
+                            </Button>
+                            <Button variant="destructive" onClick={handleDeleteLead} disabled={deleting}>
+                                {deleting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                                Eliminar
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
             </DialogContent>
         </Dialog>
     );

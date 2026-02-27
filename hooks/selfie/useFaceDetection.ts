@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
+import { FaceLandmarker } from "@mediapipe/tasks-vision";
+import { getFaceLandmarker, closeFaceLandmarker } from "@/lib/mediapipe/faceLandmarker";
+
+const VIDEO_CONFIG = { numFaces: 2, outputFaceBlendshapes: true } as const;
 
 export const useFaceDetection = (
     videoRef: React.RefObject<HTMLVideoElement | null>
@@ -24,21 +27,7 @@ export const useFaceDetection = (
     useEffect(() => {
         const loadFaceLandmarker = async () => {
             try {
-                const vision = await FilesetResolver.forVisionTasks(
-                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-                );
-                faceLandmarkerRef.current = await FaceLandmarker.createFromOptions(
-                    vision,
-                    {
-                        baseOptions: {
-                            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-                            delegate: "GPU",
-                        },
-                        runningMode: "VIDEO",
-                        numFaces: 2, // Detect up to 2 faces to identify if multiple people are present
-                        outputFaceBlendshapes: true,
-                    }
-                );
+                faceLandmarkerRef.current = await getFaceLandmarker("VIDEO", VIDEO_CONFIG);
                 setIsLoading(false);
             } catch (err) {
                 console.error("Error loading FaceLandmarker:", err);
@@ -50,9 +39,8 @@ export const useFaceDetection = (
         loadFaceLandmarker();
 
         return () => {
-            if (faceLandmarkerRef.current) {
-                faceLandmarkerRef.current.close();
-            }
+            // Note: We don't close the shared singleton here since other components may use it.
+            // The singleton manages its own lifecycle.
         };
     }, []);
 
