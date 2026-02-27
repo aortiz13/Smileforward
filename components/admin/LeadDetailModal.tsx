@@ -13,7 +13,8 @@ import { Separator } from "@/components/ui/separator";
 import {
     Mail, Phone, User, ImageIcon, MonitorPlay, Download,
     Share2, CheckCircle2, Loader2, Archive, Trees, Home,
-    Briefcase, Wine, Palmtree, Trash2, XCircle, AlertCircle
+    Briefcase, Wine, Palmtree, Trash2, XCircle, AlertCircle,
+    ChevronLeft
 } from "lucide-react";
 import { BeforeAfterSlider } from "@/components/widget/BeforeAfterSlider";
 import { Button } from "@/components/ui/button";
@@ -441,6 +442,12 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                         {/* Compact top bar overlay */}
                         <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between p-3 bg-gradient-to-b from-black/70 to-transparent">
                             <div className="flex items-center gap-2 min-w-0">
+                                <button
+                                    onClick={() => onOpenChange(false)}
+                                    className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center active:scale-90 transition-transform"
+                                >
+                                    <ChevronLeft className="w-5 h-5 text-white" />
+                                </button>
                                 <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
                                     <User className="w-4 h-4 text-white" />
                                 </div>
