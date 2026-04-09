@@ -22,12 +22,6 @@ export default function AdminLayout({
     useEffect(() => {
         const fetchRole = async () => {
             try {
-                const res = await fetch('/api/admin', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'get_user_role', user_id: 'current' })
-                });
-                // Fallback: fetch session to get role
                 const sessionRes = await fetch('/api/auth/session');
                 const session = await sessionRes.json();
                 if (session?.user?.role) {

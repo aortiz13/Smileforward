@@ -126,17 +126,9 @@ export async function downloadFileAsBuffer(
         throw new Error(`File not found: ${bucket}/${key}`);
     }
 
-    // Convert stream to buffer
-    const chunks: Uint8Array[] = [];
-    const reader = (response.Body as ReadableStream).getReader();
-    
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-    }
-
-    return Buffer.concat(chunks);
+    // AWS SDK v3: Body is a Readable (Node.js) stream, use transformToByteArray
+    const byteArray = await response.Body.transformToByteArray();
+    return Buffer.from(byteArray);
 }
 
 /**
