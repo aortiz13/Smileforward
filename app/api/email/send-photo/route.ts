@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
         // Send email
         await transporter.sendMail({
-            from: process.env.SMTP_USER,
+            from: process.env.SMTP_FROM || 'Smile Forward <noreply@brandboost-ai.com>',
             to: email,
             subject: 'Tu Simulación Smile Forward está lista ✨',
             text: 'Please see attached simulation.',

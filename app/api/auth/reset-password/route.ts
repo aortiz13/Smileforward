@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
             });
 
             await transporter.sendMail({
-                from: smtpUser,
+                from: process.env.SMTP_FROM || 'Smile Forward <noreply@brandboost-ai.com>',
                 to: email,
                 subject: 'Smile Forward - Recuperar Contraseña',
                 html: `
