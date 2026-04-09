@@ -98,7 +98,7 @@ export async function getClient() {
  * });
  */
 export async function transaction<T>(
-    callback: (client: ReturnType<Pool['connect']> extends Promise<infer C> ? C : never) => Promise<T>
+    callback: (client: import('pg').PoolClient) => Promise<T>
 ): Promise<T> {
     const client = await getClient();
     try {
