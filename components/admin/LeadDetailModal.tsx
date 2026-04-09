@@ -14,7 +14,7 @@ import {
     Mail, Phone, User, ImageIcon, MonitorPlay, Download,
     Share2, CheckCircle2, Loader2, Archive, Trees, Home,
     Briefcase, Wine, Palmtree, Trash2, XCircle, AlertCircle,
-    ChevronLeft
+    ChevronLeft, Send
 } from "lucide-react";
 import { BeforeAfterSlider } from "@/components/widget/BeforeAfterSlider";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
     const [videoProgress, setVideoProgress] = useState(0);
     const [videoStage, setVideoStage] = useState("");
     const [sendingVideo, setSendingVideo] = useState(false);
+    const [sendingPhoto, setSendingPhoto] = useState(false);
     const [mobileTab, setMobileTab] = useState<"info" | "video" | "gestion">("info");
 
     // Reset simple states when lead changes
@@ -410,6 +411,32 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
         window.open(`https://wa.me/${clean}`, "_blank");
     };
 
+    const handleResendPhoto = async () => {
+        if (!lead?.email || !generation?.output_path) return;
+        setSendingPhoto(true);
+        toast.info("Enviando imagen por email...");
+        try {
+            const res = await fetch('/api/email/send-photo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: lead.email,
+                    name: lead.name,
+                    imageUrl: generation.output_path,
+                    leadId: lead.id,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data?.error || 'Error al enviar');
+            toast.success("¡Imagen enviada por email! 📧");
+        } catch (error: any) {
+            console.error("[ResendPhoto] Error:", error);
+            toast.error("Error al enviar imagen: " + error.message);
+        } finally {
+            setSendingPhoto(false);
+        }
+    };
+
 
     const StatusBadge = ({ status }: { status: string }) => {
         const styles: Record<string, string> = {
@@ -557,6 +584,15 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                             >
                                 <Phone className="w-4 h-4" />
                             </a>
+                            {generation && (
+                                <button
+                                    onClick={handleResendPhoto}
+                                    disabled={sendingPhoto}
+                                    className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-600 text-white active:scale-95 transition-transform disabled:opacity-50"
+                                >
+                                    {sendingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                </button>
+                            )}
                             <a
                                 href={`mailto:${lead.email}`}
                                 className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-50 text-purple-600 active:scale-95 transition-transform"
@@ -943,6 +979,22 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                         <Share2 className="w-4 h-4 mr-2" />
                                         Contactar por WhatsApp
                                     </Button>
+
+                                    {generation && (
+                                        <Button
+                                            className="w-full bg-purple-600 hover:bg-purple-700 font-bold text-white"
+                                            size="lg"
+                                            onClick={handleResendPhoto}
+                                            disabled={sendingPhoto}
+                                        >
+                                            {sendingPhoto ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <Send className="w-4 h-4 mr-2" />
+                                            )}
+                                            {sendingPhoto ? "Enviando..." : "Reenviar Imagen por Email"}
+                                        </Button>
+                                    )}
 
                                     {generation && (
                                         <div className="space-y-4 pt-2">
