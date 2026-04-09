@@ -24,17 +24,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_DISABLE_ESLINT=1
 ENV NEXT_DISABLE_TYPECHECK=1
 
-# Declarar argumentos de construcción (Build Args)
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG SUPABASE_SERVICE_ROLE_KEY
-ARG RESEND_API_KEY
+# ─── Build Args (self-hosted) ─────────────────────────
+# Only NEXT_PUBLIC_* vars are needed at build time (baked into client bundle)
+ARG NEXT_PUBLIC_STORAGE_URL
+ENV NEXT_PUBLIC_STORAGE_URL=$NEXT_PUBLIC_STORAGE_URL
 
-# Pasar argumentos a variables de entorno para el proceso de build
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-ENV SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
-ENV RESEND_API_KEY=$RESEND_API_KEY
+# Dummy DATABASE_URL to satisfy build-time imports (not used for actual queries)
+ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
@@ -70,4 +66,5 @@ EXPOSE 4550
 ENV PORT=4550
 ENV HOSTNAME="0.0.0.0"
 
+# Runtime env vars are injected by EasyPanel (DATABASE_URL, MINIO_*, etc.)
 CMD ["node", "server.js"]
