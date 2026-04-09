@@ -1,6 +1,7 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
+import { db } from '@/lib/db';
+import { storage } from '@/lib/storage';
 import { revalidatePath } from 'next/cache';
 
 export async function deleteLeadAction(leadId: string) {
@@ -9,18 +10,12 @@ export async function deleteLeadAction(leadId: string) {
     }
 
     try {
-        const supabase = await createClient();
-
         // 1. Get all generations for this lead to find storage paths
-        const { data: generations, error: genFetchError } = await supabase
-            .from('generations')
-            .select('id, input_path, output_path')
-            .eq('lead_id', leadId);
-
-        if (genFetchError) {
-            console.error('Error fetching generations for deletion:', genFetchError);
-            throw new Error(`Error fetching generations: ${genFetchError.message}`);
-        }
+        const genResult = await db.query(
+            'SELECT id, input_path, output_path FROM generations WHERE lead_id = $1',
+            [leadId]
+        );
+        const generations = genResult.rows;
 
         // 2. Collect storage paths to delete
         const pathsToDeleteByBucket: Record<string, string[]> = {
@@ -32,9 +27,6 @@ export async function deleteLeadAction(leadId: string) {
         const addToBucket = (fullPath: string | null) => {
             if (!fullPath || fullPath === 'unknown') return;
 
-            // Paths might be full URLs or just keys
-            // If it's a URL, we need to extract the part after the bucket name
-            // Common format: https://.../storage/v1/object/public/[bucket]/[path]
             let cleanPath = fullPath;
             let bucketName = '';
 
@@ -44,15 +36,19 @@ export async function deleteLeadAction(leadId: string) {
                 const bucketParts = bucketAndPath.split('/');
                 bucketName = bucketParts[0];
                 cleanPath = bucketParts.slice(1).join('/');
+            } else if (fullPath.includes('://')) {
+                // Full URL from MinIO — extract key from path
+                try {
+                    const urlObj = new URL(fullPath);
+                    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+                    if (pathParts.length >= 2) {
+                        bucketName = pathParts[0];
+                        cleanPath = pathParts.slice(1).join('/');
+                    }
+                } catch {
+                    bucketName = 'generated';
+                }
             } else {
-                // If it's just a path, we might need a better heuristic or assume a default
-                // Based on app/services/storage.ts, 'scans' and 'generated' are used.
-                // Let's try to detect based on prefix or context if needed, 
-                // but usually the DB stores either the key or the full URL.
-                // Looking at LeadDetailModal.tsx line 443: src={`${supabaseUrl}/storage/v1/object/public/generated/${videoGen.output_path}`}
-                // This suggests videoGen.output_path is JUST the filename/key within 'generated'.
-
-                // If we reach here, we'll try 'generated' as default for generations outputs
                 bucketName = 'generated';
             }
 
@@ -62,8 +58,7 @@ export async function deleteLeadAction(leadId: string) {
         };
 
         if (generations) {
-            generations.forEach(gen => {
-                // If it's just a filename (like in LeadDetailModal line 443), we know it's in 'generated'
+            generations.forEach((gen: any) => {
                 if (gen.output_path && !gen.output_path.includes('://')) {
                     pathsToDeleteByBucket['generated'].push(gen.output_path);
                 } else {
@@ -71,8 +66,6 @@ export async function deleteLeadAction(leadId: string) {
                 }
 
                 if (gen.input_path && !gen.input_path.includes('://')) {
-                    // Logic from storage.ts line 24: .from('scans').upload(filePath, file)
-                    // Input paths usually go to 'scans'
                     pathsToDeleteByBucket['scans'].push(gen.input_path);
                 } else {
                     addToBucket(gen.input_path);
@@ -85,31 +78,19 @@ export async function deleteLeadAction(leadId: string) {
             const files = pathsToDeleteByBucket[bucket];
             if (files.length > 0) {
                 console.log(`Deleting ${files.length} files from bucket: ${bucket}`);
-                const { error: storageError } = await supabase.storage.from(bucket).remove(files);
-                if (storageError) {
+                try {
+                    await storage.deleteFiles(bucket, files);
+                } catch (storageError) {
                     console.error(`Error deleting files from ${bucket}:`, storageError);
-                    // We continue even if storage deletion fails partially
+                    // Continue even if storage deletion fails partially
                 }
             }
         }
 
-        // 4. Delete database records (Cascading logic in case DB constraints are not set to cascade)
-        // analysis_results
-        await supabase.from('analysis_results').delete().eq('lead_id', leadId);
-
-        // generations
-        await supabase.from('generations').delete().eq('lead_id', leadId);
-
-        // leads
-        const { error: deleteError } = await supabase
-            .from('leads')
-            .delete()
-            .eq('id', leadId);
-
-        if (deleteError) {
-            console.error('Error deleting lead record:', deleteError);
-            throw new Error(`Error deleting lead: ${deleteError.message}`);
-        }
+        // 4. Delete database records (CASCADE handles most of this, but be explicit)
+        await db.query('DELETE FROM analysis_results WHERE lead_id = $1', [leadId]);
+        await db.query('DELETE FROM generations WHERE lead_id = $1', [leadId]);
+        await db.query('DELETE FROM leads WHERE id = $1', [leadId]);
 
         revalidatePath('/administracion/leads');
         return { success: true };

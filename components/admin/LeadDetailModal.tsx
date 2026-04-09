@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { BeforeAfterSlider } from "@/components/widget/BeforeAfterSlider";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/utils/supabase/client";
+// Supabase client removed — using internal API routes
 import { toast } from "sonner";
 import { deleteLeadAction } from "@/app/(admin)/administracion/leads/actions";
 
@@ -78,8 +78,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
     const generatingRef = useRef(false);
     const stopProgressRef = useRef<(completed?: boolean) => void>(() => { });
 
-    const supabase = createClient();
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const storageBaseUrl = process.env.NEXT_PUBLIC_STORAGE_URL || "";
 
     const scenarios = [
         { id: "park", label: "Parque", icon: Trees, description: "Exterior natural, luz de día" },
@@ -155,12 +154,15 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
             try {
                 console.log(`[VideoDebug] Pinging check-video...`);
                 const start = Date.now();
-                const { data, error } = await supabase.functions.invoke("check-video", {
-                    body: { generation_id: generationId },
+                const checkRes = await fetch('/api/ai/video/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ generation_id: generationId }),
                 });
+                const data = await checkRes.json();
                 console.log(`[VideoDebug] Ping response in ${Date.now() - start}ms. Status: ${data?.status}`);
 
-                if (error) throw error;
+                if (!checkRes.ok) throw new Error(data?.error || 'Check video failed');
 
                 // CASO 1: COMPLETED
                 if (data?.status === "completed") {
@@ -209,7 +211,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                 console.error("[VideoDebug] Network Error during poll (ignoring):", err);
             }
         }, 4000);
-    }, [clearPollingInterval, supabase, onLeadUpdated]);
+    }, [clearPollingInterval, onLeadUpdated]);
 
     // Función para cancelar
     const handleCancelGeneration = async () => {
@@ -223,8 +225,10 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
         toast.info("Cancelando generación...");
 
         try {
-            await supabase.functions.invoke("cancel-video", {
-                body: { generation_id: videoGen.id }
+            await fetch('/api/ai/video/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ generation_id: videoGen.id })
             });
             console.log("[VideoDebug] Cancel request sent to server successfully.");
             setErrorMessage("Generación cancelada por el usuario.");
@@ -298,18 +302,17 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
         toast.info("Iniciando generación de vídeo...");
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) throw new Error("No hay sesión activa");
-
-            const { data, error } = await supabase.functions.invoke("generate-video", {
-                body: {
+            const genRes = await fetch('/api/ai/video/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     lead_id: lead.id,
                     scenario_id: selectedScenario === "automatic" ? null : selectedScenario,
-                },
-                headers: { Authorization: `Bearer ${session.access_token}` },
+                }),
             });
+            const data = await genRes.json();
 
-            if (error) throw error;
+            if (!genRes.ok) throw new Error(data?.error || 'Video generation failed');
 
             console.log("[VideoDebug] Generate API Success. New Gen ID:", data.generation_id);
             const newVideoGen = { id: data.generation_id, status: "initializing" };
@@ -330,14 +333,17 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
         toast.info("Enviando video por email...");
 
         try {
-            const { data, error } = await supabase.functions.invoke("send-video", {
-                body: {
+            const sendRes = await fetch('/api/email/send-video', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     leadId: lead.id,
                     videoPath: videoGen.output_path,
-                },
+                }),
             });
+            const data = await sendRes.json();
 
-            if (error) throw error;
+            if (!sendRes.ok) throw new Error(data?.error || 'Send video failed');
             if (data.success) {
                 toast.success("¡Video enviado con éxito! 📧");
             } else {
@@ -356,11 +362,16 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
         if (!lead) return;
         setLoadingAction(true);
         try {
-            const { error } = await supabase
-                .from("leads")
-                .update({ status: "contacted" })
-                .eq("id", lead.id);
-            if (error) throw error;
+            const updateRes = await fetch('/api/db', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'update_lead_status',
+                    data: { lead_id: lead.id, status: 'contacted' }
+                })
+            });
+            const updateResult = await updateRes.json();
+            if (!updateResult.success) throw new Error(updateResult.error);
             toast.success("Lead marcado como contactado");
             onLeadUpdated?.();
             onOpenChange(false);
@@ -508,7 +519,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                 <div className="relative h-full w-auto aspect-[9/16] rounded-xl overflow-hidden bg-black">
                                     <video
                                         key={videoGen.output_path}
-                                        src={`${supabaseUrl}/storage/v1/object/public/generated/${videoGen.output_path}`}
+                                        src={`${storageBaseUrl}/generated/${videoGen.output_path}`}
                                         className="w-full h-full object-contain"
                                         controls
                                         autoPlay
@@ -1132,7 +1143,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                         <div className="relative h-[90%] w-auto aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black">
                                             <video
                                                 key={videoGen.output_path}
-                                                src={`${supabaseUrl}/storage/v1/object/public/generated/${videoGen.output_path}`}
+                                                src={`${storageBaseUrl}/generated/${videoGen.output_path}`}
                                                 className="w-full h-full object-contain"
                                                 controls
                                                 autoPlay

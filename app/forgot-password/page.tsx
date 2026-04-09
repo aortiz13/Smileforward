@@ -1,32 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { Loader2, ArrowLeft, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
-    const supabase = createClient();
 
     const handleReset = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${location.origin}/auth/callback?next=/administracion/update-password`,
+            // Send password reset via SMTP API route
+            const res = await fetch('/api/auth/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
             });
 
-            if (error) {
-                throw error;
+            const result = await res.json();
+
+            if (!res.ok) {
+                throw new Error(result.error || 'Error al enviar correo');
             }
 
             setSubmitted(true);

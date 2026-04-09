@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { LayoutDashboard, Users, Settings, LogOut, Menu } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -16,32 +16,37 @@ export default function AdminLayout({
 }) {
     const router = useRouter();
     const pathname = usePathname();
-    const supabase = createClient();
     const [open, setOpen] = useState(false);
     const [role, setRole] = useState<'admin' | 'basic' | null>(null);
 
     useEffect(() => {
         const fetchRole = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data } = await supabase
-                    .from('user_roles')
-                    .select('role')
-                    .eq('user_id', user.id)
-                    .single();
-                setRole(data?.role as 'admin' | 'basic' | null);
+            try {
+                const res = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_user_role', user_id: 'current' })
+                });
+                // Fallback: fetch session to get role
+                const sessionRes = await fetch('/api/auth/session');
+                const session = await sessionRes.json();
+                if (session?.user?.role) {
+                    setRole(session.user.role as 'admin' | 'basic');
+                }
+            } catch (err) {
+                console.error('Error fetching role:', err);
             }
         };
         fetchRole();
     }, []);
 
     const handleLogout = async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            toast.error("Error al cerrar sesión");
-        } else {
+        try {
+            await signOut({ redirect: false });
             router.push("/login");
             router.refresh();
+        } catch {
+            toast.error("Error al cerrar sesión");
         }
     };
 

@@ -28,96 +28,30 @@ const stripBase64Prefix = (base64: string): string => {
     return base64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
 };
 
-const getMimeType = (base64: string): string => {
-    const match = base64.match(/^data:(image\/[a-zA-Z+]+);base64,/);
-    return match ? match[1] : 'image/jpeg';
-};
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-const isModelOverloaded = (error: unknown): boolean => {
-    if (typeof error !== 'object' || error === null) return false;
-    const e = error as Record<string, unknown>;
-    const inner = (typeof e.error === 'object' && e.error !== null) ? e.error as Record<string, unknown> : null;
-    const resp = (typeof e.response === 'object' && e.response !== null) ? e.response as Record<string, unknown> : null;
-    return (
-        e.status === 'UNAVAILABLE' ||
-        e.code === 503 ||
-        (typeof e.message === 'string' && e.message.includes('overloaded')) ||
-        inner?.code === 503 ||
-        inner?.status === 'UNAVAILABLE' ||
-        resp?.status === 503
-    );
-};
-
-// Robust Text Extractor for @google/genai SDK
-const extractText = (response: Record<string, unknown>): string => {
-    try {
-        console.log("[Gemini] Raw Response Keys:", Object.keys(response));
-        if (response.text) {
-            if (typeof response.text === 'function') {
-                return response.text();
-            }
-            if (typeof response.text === 'string') {
-                return response.text;
-            }
-        }
-        const candidates = response.candidates;
-        if (Array.isArray(candidates) && candidates[0]) {
-            const parts = (candidates[0] as Record<string, unknown>).content as Record<string, unknown> | undefined;
-            const partsArr = parts?.parts;
-            if (Array.isArray(partsArr) && partsArr[0]) {
-                const part = partsArr[0] as Record<string, unknown>;
-                if (typeof part.text === 'string') return part.text;
-                const inlineData = part.inlineData as Record<string, unknown> | undefined;
-                if (typeof inlineData?.data === 'string') return inlineData.data;
-            }
-        }
-        return "";
-    } catch (e) {
-        console.error("[Gemini] Failed to extract text:", e);
-        return "";
-    }
-};
-
-// Safe JSON Parse
-const safeParseJSON = (text: string) => {
-    try {
-        // Remove markdown code blocks if present
-        const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(cleanText);
-    } catch (e) {
-        console.error("[Gemini] JSON Parse Failed. Text:", text.slice(0, 100));
-        return null;
-    }
-};
+/**
+ * Get the base URL for internal API calls.
+ * In production, this resolves to the app's own URL.
+ */
+function getApiBaseUrl(): string {
+    // Use NEXTAUTH_URL or APP_URL for server-side calls
+    const appUrl = process.env.NEXTAUTH_URL || process.env.APP_URL || 'http://localhost:3000';
+    return appUrl;
+}
 
 // Gatekeeper
 export const validateImageStrict = async (base64Image: string): Promise<ServiceResult<{ isValid: boolean; reason: string }>> => {
-    console.log("[Gemini] ENTRY: validateImageStrict called (Edge Function Delegate).");
+    console.log("[Gemini] ENTRY: validateImageStrict called (Self-Hosted API).");
     if (!base64Image) {
         return { success: false, error: "Error: Imagen vacía o corrupta." };
     }
 
     try {
         const data = stripBase64Prefix(base64Image);
+        const API_BASE = getApiBaseUrl();
 
-        // Delegate to Supabase Edge Function
-        // This keeps the API KEY secure in Supabase Secrets
-        const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; // Or Service Role if prefered server-side
-
-        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-            console.error("Missing Supabase Configuration in Next.js Server Env");
-            return { success: false, error: "Configuration Error: Supabase URL/Key missing." };
-        }
-
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/analyze-face`, {
+        const response = await fetch(`${API_BASE}/api/ai/analyze`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 image_base64: data,
                 mode: 'validate'
@@ -126,7 +60,7 @@ export const validateImageStrict = async (base64Image: string): Promise<ServiceR
 
         if (!response.ok) {
             const errText = await response.text();
-            console.error("Edge Function Error:", errText);
+            console.error("API Error:", errText);
             const friendlyError = translateGeminiError(errText || response.status);
             return {
                 success: false,
@@ -136,7 +70,7 @@ export const validateImageStrict = async (base64Image: string): Promise<ServiceR
         }
 
         const resultKey = await response.json();
-        console.log("[Gemini] Edge Function Response:", resultKey);
+        console.log("[Gemini] API Response:", resultKey);
 
         if (resultKey) {
             await logAudit('AI_VALIDATION_RESULT', {
@@ -144,8 +78,6 @@ export const validateImageStrict = async (base64Image: string): Promise<ServiceR
                 is_valid: resultKey.is_valid,
                 reason: resultKey.rejection_reason
             });
-            // Check keys returned by the specific 'validate' prompt
-            // "is_valid": boolean, "rejection_reason": string
             return {
                 success: true,
                 data: {
@@ -158,7 +90,7 @@ export const validateImageStrict = async (base64Image: string): Promise<ServiceR
         return { success: false, error: "Respuesta inválida del analizador." };
 
     } catch (error: unknown) {
-        console.error("[Gatekeeper] Delegate Error:", error);
+        console.error("[Gatekeeper] Error:", error);
         const errMsg = getErrorMessage(error);
         await logAudit('AI_VALIDATION_ERROR', { error: errMsg });
         const friendlyError = translateGeminiError(errMsg);
@@ -172,16 +104,15 @@ export const validateImageStrict = async (base64Image: string): Promise<ServiceR
 
 // Analysis
 export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promise<ServiceResult<AnalysisResponse>> => {
-    console.log("[Gemini] ENTRY: analyzeImageAndGeneratePrompts called (Edge Function Delegate).");
+    console.log("[Gemini] ENTRY: analyzeImageAndGeneratePrompts called (Self-Hosted API).");
     try {
         const file = formData.get('file');
         const imageUrl = formData.get('imageUrl') as string;
-        const imagePath = formData.get('imagePath') as string; // New: Internal storage path
+        const imagePath = formData.get('imagePath') as string;
 
         let data = "";
 
         // PRIORITY 1: if internal path exists, we don't need to send base64 data!
-        // The Edge function can download it directly.
         if (imagePath) {
             console.log("[Gemini] Using internal path for analysis:", imagePath);
         } else if (imageUrl && imageUrl.startsWith('http')) {
@@ -196,29 +127,21 @@ export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promis
             return { success: false, error: "Missing file, path or imageUrl in FormData" };
         }
 
-        const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        const API_BASE = getApiBaseUrl();
 
-        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-            return { success: false, error: "Configuration Error: Supabase URL/Key missing." };
-        }
-
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/analyze-face`, {
+        const response = await fetch(`${API_BASE}/api/ai/analyze`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 image_path: imagePath,
                 image_base64: data || undefined,
-                mode: 'analyze' // Default
+                mode: 'analyze'
             })
         });
 
         if (!response.ok) {
             const errText = await response.text();
-            console.error("Edge Function Error:", errText);
+            console.error("API Error:", errText);
             const friendlyError = translateGeminiError(errText || response.status);
             return {
                 success: false,
@@ -226,7 +149,6 @@ export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promis
                 errorDetails: friendlyError
             };
         }
-
 
         const rawBody = await response.text();
         let text: unknown;
@@ -240,7 +162,15 @@ export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promis
 
         await logAudit('AI_ANALYSIS_RESULT', { raw_text: rawText });
         await logApiUsage('GEMINI_VISION_ANALYSIS');
-        const result = safeParseJSON(rawText) as AnalysisResponse;
+
+        // Safe JSON Parse
+        const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        let result: AnalysisResponse | null = null;
+        try {
+            result = JSON.parse(cleanText);
+        } catch {
+            console.error("[Gemini] JSON Parse Failed. Text:", cleanText.slice(0, 100));
+        }
 
         if (!result) {
             if (typeof text === 'object' && text !== null) {
@@ -265,12 +195,12 @@ export const analyzeImageAndGeneratePrompts = async (formData: FormData): Promis
 
 // Generate Smile Variation
 export const generateSmileVariation = async (formData: FormData): Promise<ServiceResult<string>> => {
-    console.log("[Gemini] generateSmileVariation STARTED (Edge Function Delegate)");
+    console.log("[Gemini] generateSmileVariation STARTED (Self-Hosted API)");
 
     try {
         const file = formData.get('file');
         const imageUrl = formData.get('imageUrl') as string;
-        const imagePath = formData.get('imagePath') as string; // New: Internal storage path
+        const imagePath = formData.get('imagePath') as string;
         const variationPrompt = formData.get('variationPrompt') as string;
         const aspectRatio = (formData.get('aspectRatio') as any) || "1:1";
         const userId = formData.get('userId') as string || "anon";
@@ -279,7 +209,6 @@ export const generateSmileVariation = async (formData: FormData): Promise<Servic
 
         let data = "";
 
-        // PRIORITY 1: if internal path exists, we don't need to send base64 data!
         if (imagePath) {
             console.log("[Gemini] Using internal path for generation:", imagePath);
         } else if (imageUrl && imageUrl.startsWith('http')) {
@@ -294,41 +223,32 @@ export const generateSmileVariation = async (formData: FormData): Promise<Servic
             return { success: false, error: "Missing file, path or imageUrl in FormData" };
         }
 
-        const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        const API_BASE = getApiBaseUrl();
 
-        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-            throw new Error("Configuration Error: Supabase URL/Key missing.");
-        }
-
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-smile`, {
+        const response = await fetch(`${API_BASE}/api/ai/smile`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 image_path: imagePath,
                 image_base64: data || undefined,
                 prompt_options: {
-                    variationPrompt, // Fallback / UI Text
+                    variationPrompt,
                     aspectRatio,
-                    analysis_id: analysisId, // Pass the ID
-                    type: variationType // Pass the type (e.g. 'original_bg')
+                    analysis_id: analysisId,
+                    type: variationType
                 }
             })
         });
 
         if (!response.ok) {
             const errText = await response.text();
-            console.error("Edge Function Error:", errText);
+            console.error("API Error:", errText);
 
-            // Attempt to extract JSON error message if present
             let errorMessage = errText;
             try {
                 const errJson = JSON.parse(errText);
                 if (errJson.error) errorMessage = errJson.error;
-            } catch (e) { /* Fallback to raw text */ }
+            } catch { /* Fallback to raw text */ }
 
             const friendlyError = translateGeminiError(errorMessage || response.status);
             return {
@@ -339,7 +259,7 @@ export const generateSmileVariation = async (formData: FormData): Promise<Servic
         }
 
         const result = await response.json();
-        console.log("[Gemini] Edge Function Response:", result);
+        console.log("[Gemini] API Response:", result);
         await logAudit('AI_SMILE_GENERATION_RESULT', { result });
 
         if (result.success && result.public_url) {

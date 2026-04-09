@@ -1,31 +1,19 @@
 // app/auth/confirm/page.tsx
+// With NextAuth, email confirmation is not needed.
+// This page redirects to the dashboard.
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function AuthConfirmPage() {
     const router = useRouter();
-    const searchParams = useSearchParams();
 
     useEffect(() => {
-        const supabase = createClient();
-
-        // Supabase SSR escucha automáticamente el hash y establece la sesión
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
-                if (event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") {
-                    const next = searchParams.get("next") || "/administracion/update-password";
-                    router.replace(next);
-                } else if (event === "USER_UPDATED") {
-                    router.replace("/administracion/dashboard");
-                }
-            }
-        );
-
-        return () => subscription.unsubscribe();
-    }, [router, searchParams]);
+        // With NextAuth, session is handled via cookies—no hash-based confirmation.
+        // Redirect to dashboard or update-password.
+        router.replace("/administracion/dashboard");
+    }, [router]);
 
     return (
         <div className="flex h-screen items-center justify-center">

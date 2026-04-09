@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -18,54 +17,22 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-    const supabase = createClient();
+    const { data: session, status } = useSession();
 
-    // Auto-redirect if already logged in (handles fragment cases)
+    // Auto-redirect if already logged in
     useEffect(() => {
-        const handleRedirect = (session: any, event?: string) => {
-            if (!session) return;
-
-            console.log(`[LoginPage] Session detected (Event: ${event}), handling redirect...`);
-            const hash = typeof window !== 'undefined' ? window.location.hash : '';
-            const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+        if (status === 'authenticated' && session) {
+            console.log("[LoginPage] Session detected, redirecting to dashboard...");
+            const searchParams = new URLSearchParams(window.location.search);
             const nextParam = searchParams.get("next");
 
-            console.log("[LoginPage] Context:", { hash, nextParam, event });
-
-            // If we came from an invite/recovery, we want to go specifically to update-password
-            const isRecoveryFlow = event === 'PASSWORD_RECOVERY' ||
-                hash.includes('type=recovery') ||
-                hash.includes('type=invite') ||
-                hash.includes('type=signup') ||
-                nextParam?.includes('update-password');
-
-            if (isRecoveryFlow) {
-                console.log("[LoginPage] Auth flow detected, enforcing password update route");
-                window.location.href = "/administracion/update-password";
-            } else if (nextParam) {
-                console.log("[LoginPage] Next param detected:", nextParam);
+            if (nextParam) {
                 window.location.href = nextParam;
             } else {
-                console.log("[LoginPage] Default redirect to dashboard");
                 window.location.href = "/administracion/dashboard";
             }
-        };
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            console.log("[LoginPage] Auth state change event:", event, !!session);
-            if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'PASSWORD_RECOVERY' || event === 'USER_UPDATED')) {
-                handleRedirect(session, event);
-            }
-        });
-
-        // Also check immediately on mount
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            console.log("[LoginPage] Initial session check:", !!session);
-            if (session) handleRedirect(session, 'INITIAL_SESSION');
-        });
-
-        return () => subscription.unsubscribe();
-    }, [supabase]);
+        }
+    }, [session, status]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();

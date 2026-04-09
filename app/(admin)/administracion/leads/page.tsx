@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { createClient } from "@/utils/supabase/client";
 import { Loader2, Download, Eye, Search, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { LeadDetailModal } from "@/components/admin/LeadDetailModal";
@@ -24,21 +23,22 @@ export default function LeadsPage() {
 
     const fetchLeads = useCallback(async () => {
         try {
-            const supabase = createClient();
+            const res = await fetch('/api/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_leads' })
+            });
+            const result = await res.json();
 
-            const { data, error } = await supabase
-                .from('leads')
-                .select('*, generations(*)') // Fetch linked generations
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                toast.error(`Error cargando leads: ${error.message}`);
-                throw error;
+            if (result.error) {
+                toast.error(`Error cargando leads: ${result.error}`);
+                throw new Error(result.error);
             }
-            const updatedLeads = data || [];
+
+            const updatedLeads = result.data || [];
             setLeads(updatedLeads);
 
-            // Sync selectedLead if it's currently open, without causing a dependency loop
+            // Sync selectedLead if it's currently open
             setSelectedLead((prev: any) => {
                 if (!prev) return null;
                 const refreshedLead = updatedLeads.find((l: any) => l.id === prev.id);
@@ -50,7 +50,7 @@ export default function LeadsPage() {
         } finally {
             setLoading(false);
         }
-    }, []); // Empty dependencies to avoid callback recreation
+    }, []);
 
     useEffect(() => {
         fetchLeads();

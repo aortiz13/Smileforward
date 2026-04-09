@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { createClient } from "@/utils/supabase/client";
+// Supabase client removed — using internal API routes instead
 import { analyzeImageAndGeneratePrompts, generateSmileVariation } from "@/lib/services/gemini";
 import { validateStaticImage } from "@/utils/faceValidation";
 import { uploadScan, uploadGeneratedImageAction } from "@/lib/services/storage";
@@ -165,49 +165,47 @@ export function useWidgetState(props: WidgetContainerProps = {}) {
         }
     }, [step, sessionId]);
 
-    // Listen for Selfie Session updates (Realtime)
+    // Listen for Selfie Session updates (Polling — replaces Supabase Realtime)
     useEffect(() => {
         if (!sessionId || step !== "SELFIE_CAPTURE") return;
 
-        const supabase = createClient();
-        const channel = supabase
-            .channel(`selfie_session_${sessionId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'selfie_sessions',
-                    filter: `id=eq.${sessionId}`
-                },
-                async (payload) => {
-                    console.log("Realtime update received:", payload);
-                    const newStatus = payload.new.status;
-                    const imageUrl = payload.new.image_url;
+        let active = true;
+        const pollInterval = setInterval(async () => {
+            try {
+                const res = await fetch('/api/db', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_selfie_session', data: { session_id: sessionId } })
+                });
+                const result = await res.json();
+                if (!active || !result.data) return;
 
-                    if (newStatus === 'mobile_connected') {
-                        setMobileConnected(true);
-                    }
+                const { status: newStatus, image_url: imageUrl } = result.data;
 
-                    if (newStatus === 'uploaded' && imageUrl) {
-                        try {
-                            const response = await fetch(imageUrl);
-                            const blob = await response.blob();
-                            const file = new File([blob], "mobile-selfie.jpg", { type: "image/jpeg" });
-                            handleUpload(file);
-                        } catch (err) {
-                            console.error("Error fetching mobile selfie:", err);
-                            toast.error("Error recuperando la foto del móvil.");
-                        }
+                if (newStatus === 'mobile_connected') {
+                    setMobileConnected(true);
+                }
+
+                if (newStatus === 'uploaded' && imageUrl) {
+                    clearInterval(pollInterval);
+                    try {
+                        const response = await fetch(imageUrl);
+                        const blob = await response.blob();
+                        const file = new File([blob], "mobile-selfie.jpg", { type: "image/jpeg" });
+                        handleUpload(file);
+                    } catch (err) {
+                        console.error("Error fetching mobile selfie:", err);
+                        toast.error("Error recuperando la foto del móvil.");
                     }
                 }
-            )
-            .subscribe((status) => {
-                console.log("Subscription status:", status);
-            });
+            } catch (err) {
+                console.error("Polling error:", err);
+            }
+        }, 2000);
 
         return () => {
-            supabase.removeChannel(channel);
+            active = false;
+            clearInterval(pollInterval);
         };
     }, [sessionId, step]);
 
@@ -229,20 +227,26 @@ export function useWidgetState(props: WidgetContainerProps = {}) {
             // Save lead if not saved yet
             let currentLeadId = leadId;
             if (!currentLeadId) {
-                const supabase = createClient();
                 const newLeadId = crypto.randomUUID();
                 const countryDialCode = countries.find(c => c.code === selectedCountry)?.dial_code || '+34';
                 const fullPhone = `${countryDialCode} ${formValues.phoneNumber}`;
 
-                const { error: leadError } = await supabase.from('leads').insert({
-                    id: newLeadId,
-                    name: formValues.name,
-                    email: formValues.email,
-                    phone: fullPhone.trim(),
-                    status: 'pending'
+                const leadRes = await fetch('/api/db', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'insert_lead',
+                        data: {
+                            id: newLeadId,
+                            name: formValues.name,
+                            email: formValues.email,
+                            phone: fullPhone.trim(),
+                            status: 'pending'
+                        }
+                    })
                 });
-
-                if (leadError) throw leadError;
+                const leadResult = await leadRes.json();
+                if (!leadResult.success) throw new Error(leadResult.error || 'Error creating lead');
 
                 setLeadId(newLeadId);
                 currentLeadId = newLeadId;
@@ -265,11 +269,9 @@ export function useWidgetState(props: WidgetContainerProps = {}) {
             const formData = new FormData();
             formData.append('file', compressedFile);
 
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            const supabaseUserId = user?.id || 'anon_' + crypto.randomUUID();
-            setUserId(supabaseUserId);
-            formData.append('userId', supabaseUserId);
+            const anonUserId = 'anon_' + crypto.randomUUID();
+            setUserId(anonUserId);
+            formData.append('userId', anonUserId);
 
             let localScanUrl = null;
             let localScanPath = null;
@@ -331,7 +333,7 @@ export function useWidgetState(props: WidgetContainerProps = {}) {
             }
             genFormData.append('variationPrompt', fallbackPrompt);
             genFormData.append('aspectRatio', "9:16");
-            genFormData.append('userId', supabaseUserId);
+            genFormData.append('userId', anonUserId);
             if (analysisResult.analysis_id) genFormData.append('analysisId', analysisResult.analysis_id);
             genFormData.append('variationType', VariationType.ORIGINAL_BG);
 
@@ -376,16 +378,23 @@ export function useWidgetState(props: WidgetContainerProps = {}) {
                         outputUrl = await uploadGeneratedImageAction(formData);
                     }
 
-                    const supabase = createClient();
-                    const { error: genError } = await supabase.from('generations').insert({
-                        lead_id: currentLeadId,
-                        type: 'image',
-                        status: 'completed',
-                        input_path: localScanUrl || 'unknown',
-                        output_path: outputUrl,
-                        metadata: { source: 'widget_v1' }
+                    const genRes = await fetch('/api/db', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'insert_generation',
+                            data: {
+                                lead_id: currentLeadId,
+                                type: 'image',
+                                status: 'completed',
+                                input_path: localScanUrl || 'unknown',
+                                output_path: outputUrl,
+                                metadata: { source: 'widget_v1' }
+                            }
+                        })
                     });
-                    if (genError) console.error("Error saving generation:", genError);
+                    const genResult = await genRes.json();
+                    if (!genResult.success) console.error("Error saving generation:", genResult.error);
 
                     setStep("RESULT");
                 } catch (autoErr) {
@@ -430,18 +439,13 @@ export function useWidgetState(props: WidgetContainerProps = {}) {
         }, 3000);
 
         try {
-            const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/clinical-video-request`;
-            const response = await fetch(functionUrl, {
+            const response = await fetch('/api/email/clinical-request', {
                 method: 'POST',
-                credentials: 'omit',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: userEmail,
-                    name: userName,
-                    phone: userPhone,
+                    leadEmail: userEmail,
+                    leadName: userName,
+                    leadPhone: userPhone,
                     leadId: leadId
                 })
             });
@@ -473,14 +477,9 @@ export function useWidgetState(props: WidgetContainerProps = {}) {
         }, 3000);
 
         try {
-            const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-photo-email`;
-            const response = await fetch(functionUrl, {
+            const response = await fetch('/api/email/send-photo', {
                 method: 'POST',
-                credentials: 'omit',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: userEmail,
                     name: userName,
@@ -518,13 +517,16 @@ export function useWidgetState(props: WidgetContainerProps = {}) {
         };
 
         try {
-            const supabase = createClient();
-            const { error } = await supabase
-                .from('leads')
-                .update({ survey_data: surveyData })
-                .eq('id', leadId);
-
-            if (error) throw error;
+            const surveyRes = await fetch('/api/db', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'update_lead_survey',
+                    data: { lead_id: leadId, survey_data: surveyData }
+                })
+            });
+            const surveyResult = await surveyRes.json();
+            if (!surveyResult.success) throw new Error(surveyResult.error);
 
             toast.success("Gracias por tus respuestas");
             setStep("VERIFICATION");

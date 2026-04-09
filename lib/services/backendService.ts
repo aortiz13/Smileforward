@@ -1,20 +1,15 @@
 
-import { createClient } from '@/utils/supabase/server';
+import { db } from '@/lib/db';
 
 /**
- * Logs API usage to Supabase for tracking and quota management.
+ * Logs API usage to database for tracking and quota management.
  */
 export async function logApiUsage(serviceName: string) {
     try {
-        const supabase = await createClient();
-        const { error } = await supabase.from('api_usage_logs').insert({
-            service_name: serviceName,
-            timestamp: new Date().toISOString(),
-        });
-
-        if (error) {
-            console.error('[BackendService] Failed to log API usage:', error);
-        }
+        await db.query(
+            `INSERT INTO api_usage_logs (service_name, timestamp) VALUES ($1, $2)`,
+            [serviceName, new Date().toISOString()]
+        );
     } catch (e) {
         console.error('[BackendService] logApiUsage crashed:', e);
     }
@@ -26,16 +21,10 @@ export async function logApiUsage(serviceName: string) {
 export async function logAudit(action: string, details: any) {
     try {
         console.log(`[AUDIT] ${action}:`, JSON.stringify(details, null, 2));
-        const supabase = await createClient();
-        const { error } = await supabase.from('audit_logs').insert({
-            action,
-            details,
-            created_at: new Date().toISOString(),
-        });
-
-        if (error) {
-            console.error('[BackendService] Failed to persist audit log:', error);
-        }
+        await db.query(
+            `INSERT INTO audit_logs (action, details, created_at) VALUES ($1, $2, $3)`,
+            [action, JSON.stringify(details), new Date().toISOString()]
+        );
     } catch (e) {
         console.error('[BackendService] logAudit crashed:', e);
     }

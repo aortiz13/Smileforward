@@ -1,22 +1,14 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
+import { db } from '@/lib/db';
 
 export async function createSelfieSession() {
     try {
-        const supabase = await createClient();
-        const { data, error } = await supabase
-            .from('selfie_sessions')
-            .insert({})
-            .select('id')
-            .single();
+        const result = await db.insertReturning(
+            `INSERT INTO selfie_sessions (status) VALUES ('pending') RETURNING id`
+        );
 
-        if (error) {
-            console.error("Error creating selfie session:", error);
-            return { success: false, error: error.message };
-        }
-
-        return { success: true, sessionId: data.id };
+        return { success: true, sessionId: result.id };
     } catch (err: any) {
         console.error("Server error creating session:", err);
         return { success: false, error: err.message };
@@ -25,23 +17,15 @@ export async function createSelfieSession() {
 
 export async function updateSelfieSession(sessionId: string, status: string, imageUrl?: string) {
     try {
-        const supabase = await createClient();
+        const params: any[] = [status, sessionId];
+        let query = 'UPDATE selfie_sessions SET status = $1 WHERE id = $2';
 
-        const updateData: any = { status };
         if (imageUrl) {
-            updateData.image_url = imageUrl;
+            query = 'UPDATE selfie_sessions SET status = $1, image_url = $2 WHERE id = $3';
+            params.splice(1, 0, imageUrl);
         }
 
-        const { error } = await supabase
-            .from('selfie_sessions')
-            .update(updateData)
-            .eq('id', sessionId);
-
-        if (error) {
-            console.error("Error updating selfie session:", error);
-            return { success: false, error: error.message };
-        }
-
+        await db.query(query, params);
         return { success: true };
     } catch (err: any) {
         console.error("Server error updating session:", err);
@@ -51,15 +35,13 @@ export async function updateSelfieSession(sessionId: string, status: string, ima
 
 export async function getSelfieSession(sessionId: string) {
     try {
-        const supabase = await createClient();
-        const { data, error } = await supabase
-            .from('selfie_sessions')
-            .select('*')
-            .eq('id', sessionId)
-            .single();
+        const data = await db.queryOne(
+            'SELECT * FROM selfie_sessions WHERE id = $1',
+            [sessionId]
+        );
 
-        if (error) {
-            return { success: false, error: error.message };
+        if (!data) {
+            return { success: false, error: 'Session not found' };
         }
 
         return { success: true, session: data };

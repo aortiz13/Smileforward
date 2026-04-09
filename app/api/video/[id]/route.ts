@@ -1,63 +1,53 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { storage } from '@/lib/storage'
 
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-        console.error('[api/video] Missing SUPABASE_URL or SERVICE_ROLE_KEY');
-        return new NextResponse('Server configuration error', { status: 500 });
-    }
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-
     const { id } = await params
-    const { data: lead, error } = await supabase
-        .from('leads')
-        .select('video_path')
-        .eq('id', id)
-        .single()
 
-    if (error || !lead?.video_path) {
+    // Get video path from database
+    const lead = await db.queryOne(
+        'SELECT video_path FROM leads WHERE id = $1',
+        [id]
+    );
+
+    if (!lead?.video_path) {
         return new NextResponse('Video no encontrado', { status: 404 })
     }
 
-    // URL firmada — solo 60 segundos, uso interno, nunca llega al cliente
-    const { data: signed, error: signError } = await supabase.storage
-        .from('generated')
-        .createSignedUrl(lead.video_path, 60)
+    try {
+        // Create a signed URL for the video (60 seconds)
+        const signedUrl = await storage.createSignedUrl('generated', lead.video_path, 60);
 
-    if (signError || !signed?.signedUrl) {
-        console.error('Error generando URL firmada:', signError)
+        // Proxy: download the video from storage and relay to browser
+        // The Range header enables seeking in the video
+        const videoResponse = await fetch(signedUrl, {
+            headers: {
+                Range: req.headers.get('range') ?? 'bytes=0-',
+            },
+        })
+
+        // Transmit relevant headers for video
+        const headers = new Headers()
+        headers.set('Content-Type', videoResponse.headers.get('Content-Type') ?? 'video/mp4')
+        headers.set('Accept-Ranges', 'bytes')
+        headers.set('Cache-Control', 'no-store')
+
+        const contentLength = videoResponse.headers.get('Content-Length')
+        if (contentLength) headers.set('Content-Length', contentLength)
+
+        const contentRange = videoResponse.headers.get('Content-Range')
+        if (contentRange) headers.set('Content-Range', contentRange)
+
+        return new NextResponse(videoResponse.body, {
+            status: videoResponse.status,
+            headers: headers,
+        })
+    } catch (error) {
+        console.error('Error serving video:', error)
         return new NextResponse('Error generando el video', { status: 500 })
     }
-
-    // Proxy: descarga el video de Supabase y lo retransmite al navegador
-    // El header Range permite adelantar/retroceder el video
-    const videoResponse = await fetch(signed.signedUrl, {
-        headers: {
-            Range: req.headers.get('range') ?? 'bytes=0-',
-        },
-    })
-
-    // Transmitir headers relevantes para video
-    const headers = new Headers()
-    headers.set('Content-Type', videoResponse.headers.get('Content-Type') ?? 'video/mp4')
-    headers.set('Accept-Ranges', 'bytes')
-    headers.set('Cache-Control', 'no-store')
-
-    const contentLength = videoResponse.headers.get('Content-Length')
-    if (contentLength) headers.set('Content-Length', contentLength)
-
-    const contentRange = videoResponse.headers.get('Content-Range')
-    if (contentRange) headers.set('Content-Range', contentRange)
-
-    return new NextResponse(videoResponse.body, {
-        status: videoResponse.status,
-        headers: headers,
-    })
 }

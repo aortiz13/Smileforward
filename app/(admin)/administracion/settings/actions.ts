@@ -1,122 +1,98 @@
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
+import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth/session'
+import { hashPassword } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
+import nodemailer from 'nodemailer'
 
 export async function inviteUser(formData: FormData) {
-    // 0. Check critical configuration early
-    const resendApiKey = process.env.RESEND_API_KEY;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    try {
+        // 1. Verify current user is admin
+        const currentUser = await requireAuth('admin');
 
-    if (!supabaseUrl || !serviceRoleKey || !resendApiKey) {
-        let missing = [];
-        if (!supabaseUrl) missing.push("NEXT_PUBLIC_SUPABASE_URL");
-        if (!serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
-        if (!resendApiKey) missing.push("RESEND_API_KEY");
-        return { error: `Configuración incompleta en .env.local: Falta ${missing.join(', ')}` };
-    }
+        // 2. Get form data
+        const email = formData.get('email') as string
+        const role = formData.get('role') as 'admin' | 'basic'
 
-    const supabase = await createClient()
-
-    // 1. Verify current user is admin
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-        return { error: 'Not authenticated' }
-    }
-
-    const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single()
-
-    if (roleData?.role !== 'admin') {
-        return { error: 'Unauthorized: Only admins can invite users' }
-    }
-
-    // 2. Get form data
-    const email = formData.get('email') as string
-    const role = formData.get('role') as 'admin' | 'basic'
-
-    if (!email || !role) {
-        return { error: 'Email and role are required' }
-    }
-
-    // 3. Get origin for redirect URL (more robust detection)
-    const host = (await headers()).get('x-forwarded-host') || (await headers()).get('host');
-    const protocol = (await headers()).get('x-forwarded-proto') || 'https';
-    const origin = `${protocol}://${host}`;
-
-    // 4. Use native Supabase invitation
-    const supabaseAdmin = await createAdminClient()
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${origin}/auth/callback?next=/administracion/update-password`,
-        data: {
-            // Optional: metadata you might want to pass
-            role: role
+        if (!email || !role) {
+            return { error: 'Email and role are required' }
         }
-    })
 
-    if (inviteError) {
-        console.error('Supabase Invite error:', inviteError)
-        return { error: 'Error de Supabase al invitar: ' + inviteError.message }
-    }
+        // 3. Check if user already exists
+        const existingUser = await db.queryOne(
+            'SELECT id FROM users WHERE email = $1',
+            [email]
+        );
 
-    if (!inviteData.user) {
-        return { error: 'No se pudo crear el usuario invitado' }
-    }
-
-    // 5. Assign/Update role in user_roles table
-    const { error: roleError } = await supabaseAdmin
-        .from('user_roles')
-        .upsert({
-            user_id: inviteData.user.id,
-            role: role
-        }, { onConflict: 'user_id' })
-
-    if (roleError) {
-        console.error('Role assignment error:', roleError)
-        return { error: 'Usuario invitado pero falló la asignación de rol: ' + roleError.message }
-    }
-
-    revalidatePath('/administracion/settings')
-    return { success: true, message: `Invitación enviada nativamente a ${email} como ${role}` }
-}
-
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-
-async function createAdminClient() {
-    const cookieStore = await cookies()
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    if (!supabaseUrl || !serviceRoleKey) {
-        throw new Error('Configuración incompleta: Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en el servidor.')
-    }
-
-    return createServerClient(
-        supabaseUrl,
-        serviceRoleKey,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        )
-                    } catch {
-                        // The `setAll` method was called from a Server Component.
-                        // This can be ignored if you have middleware refreshing
-                        // user sessions.
-                    }
-                },
-            },
+        if (existingUser) {
+            // Update role if user exists
+            await db.query(
+                `INSERT INTO user_roles (user_id, role) VALUES ($1, $2)
+                 ON CONFLICT (user_id) DO UPDATE SET role = $2`,
+                [existingUser.id, role]
+            );
+            revalidatePath('/administracion/settings');
+            return { success: true, message: `Rol actualizado para ${email}` };
         }
-    )
+
+        // 4. Create new user with temporary password
+        const tempPassword = crypto.randomUUID().slice(0, 12);
+        const passwordHash = await hashPassword(tempPassword);
+
+        const newUser = await db.insertReturning(
+            `INSERT INTO users (email, password_hash, name) 
+             VALUES ($1, $2, $3) RETURNING id`,
+            [email, passwordHash, email.split('@')[0]]
+        );
+
+        // 5. Assign role
+        await db.query(
+            `INSERT INTO user_roles (user_id, role) VALUES ($1, $2)`,
+            [newUser.id, role]
+        );
+
+        // 6. Send invitation email
+        const smtpHostname = process.env.SMTP_HOSTNAME;
+        const smtpUser = process.env.SMTP_USER;
+        const smtpPass = process.env.SMTP_PASS;
+
+        if (smtpHostname && smtpUser && smtpPass) {
+            const host = (await headers()).get('x-forwarded-host') || (await headers()).get('host');
+            const protocol = (await headers()).get('x-forwarded-proto') || 'https';
+            const origin = `${protocol}://${host}`;
+
+            const transporter = nodemailer.createTransport({
+                host: smtpHostname,
+                port: parseInt(process.env.SMTP_PORT || '465'),
+                secure: true,
+                auth: { user: smtpUser, pass: smtpPass },
+            });
+
+            await transporter.sendMail({
+                from: smtpUser,
+                to: email,
+                subject: 'Invitación a Smile Forward - Panel de Administración',
+                html: `
+                    <h2>Has sido invitado a Smile Forward</h2>
+                    <p>Tu cuenta ha sido creada con el rol de <strong>${role}</strong>.</p>
+                    <p><strong>Credenciales temporales:</strong></p>
+                    <ul>
+                        <li>Email: ${email}</li>
+                        <li>Contraseña: ${tempPassword}</li>
+                    </ul>
+                    <p><a href="${origin}/login">Iniciar sesión</a></p>
+                    <p><small>Por favor, cambia tu contraseña después de iniciar sesión.</small></p>
+                `,
+            });
+        }
+
+        revalidatePath('/administracion/settings');
+        return { success: true, message: `Invitación enviada a ${email} como ${role}` }
+
+    } catch (error: any) {
+        console.error('inviteUser error:', error);
+        return { error: error.message || 'Error al invitar usuario' }
+    }
 }

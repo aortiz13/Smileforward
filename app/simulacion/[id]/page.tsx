@@ -1,5 +1,5 @@
 // app/simulacion/[id]/page.tsx
-import { createClient } from '@supabase/supabase-js'
+import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
 
 export default async function SimulacionPage({
@@ -7,24 +7,14 @@ export default async function SimulacionPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error('[simulacion] Missing SUPABASE_URL or SERVICE_ROLE_KEY');
-    return notFound();
-  }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
-
   const { id } = await params
-  const { data: lead, error } = await supabase
-    .from('leads')
-    .select('name, video_path')
-    .eq('id', id)
-    .single()
 
-  if (error || !lead?.video_path) return notFound()
+  const lead = await db.queryOne(
+    'SELECT name, video_path FROM leads WHERE id = $1',
+    [id]
+  );
+
+  if (!lead?.video_path) return notFound()
 
   const videoSrc = `/api/video/${id}`
 

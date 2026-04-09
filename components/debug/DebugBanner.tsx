@@ -45,7 +45,7 @@ export function DebugBanner() {
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 px-3 py-1 bg-black/40 rounded">
                         <span className="opacity-75">Env Vars:</span>
-                        {process.env.NEXT_PUBLIC_SUPABASE_URL ?
+                        {process.env.NEXT_PUBLIC_STORAGE_URL ?
                             <span className="text-green-400 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Loaded</span> :
                             <span className="text-red-400 flex items-center gap-1"><XCircle className="w-3 h-3" /> Missing</span>
                         }
@@ -71,7 +71,9 @@ export function DebugBanner() {
                         {healthStatus.envCheck && (
                             <div className="flex gap-2">
                                 <span title="Server API Key Status">🔑 {healthStatus.envCheck.apiKey ? '✅' : '❌'}</span>
-                                <span title="Server Supabase Status">⚡ {healthStatus.envCheck.supabaseUrl ? '✅' : '❌'}</span>
+                                <span title="Database Status">🗄️ {healthStatus.envCheck.database ? '✅' : '❌'}</span>
+                                <span title="Storage Status">📦 {healthStatus.envCheck.minio ? '✅' : '❌'}</span>
+                                <span title="Auth Status">🔐 {healthStatus.envCheck.nextauth ? '✅' : '❌'}</span>
                             </div>
                         )}
                     </div>

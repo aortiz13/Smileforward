@@ -1,14 +1,11 @@
-import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
+import { signOut } from "@/lib/auth";
 
 export async function POST(request: Request) {
-    const supabase = await createClient();
-
-    // Check if a session exists before signing out
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (session) {
-        await supabase.auth.signOut();
+    try {
+        await signOut({ redirect: false });
+    } catch {
+        // signOut may throw in some configurations, but the session cookie is cleared
     }
 
     const url = new URL(request.url);

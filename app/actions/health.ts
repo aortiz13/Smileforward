@@ -6,8 +6,11 @@ export async function checkServerHealth() {
         status: "ok",
         timestamp: new Date().toISOString(),
         envCheck: {
-            apiKey: !!process.env.API_KEY,
-            supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL
+            apiKey: !!process.env.GOOGLE_API_KEY,
+            database: !!process.env.DATABASE_URL,
+            minio: !!process.env.MINIO_ENDPOINT,
+            nextauth: !!process.env.NEXTAUTH_SECRET,
+            smtp: !!process.env.SMTP_HOSTNAME
         }
     };
 }

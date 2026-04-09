@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
 
 export default function UpdatePasswordPage() {
     const [loading, setLoading] = useState(false);
@@ -24,17 +23,29 @@ export default function UpdatePasswordPage() {
         }
 
         setLoading(true);
-        const supabase = createClient();
 
-        const { error } = await supabase.auth.updateUser({ password });
+        try {
+            const res = await fetch('/api/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'update_password',
+                    password,
+                })
+            });
 
-        setLoading(false);
+            const result = await res.json();
 
-        if (error) {
-            toast.error(error.message);
-        } else {
-            toast.success("Contraseña actualizada correctamente");
-            router.push("/administracion/dashboard");
+            if (result.error) {
+                toast.error(result.error);
+            } else {
+                toast.success("Contraseña actualizada correctamente");
+                router.push("/administracion/dashboard");
+            }
+        } catch (err: any) {
+            toast.error(err.message || "Error actualizando contraseña");
+        } finally {
+            setLoading(false);
         }
     }
 
