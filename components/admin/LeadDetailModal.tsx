@@ -556,11 +556,11 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                     />
                                     <Button
                                         size="sm"
-                                        className="absolute top-2 right-2 h-7 rounded-full bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-2.5 z-30"
+                                        className="absolute top-2 right-2 h-7 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] font-bold px-2.5 z-30"
                                         onClick={handleSendVideo}
                                         disabled={sendingVideo}
                                     >
-                                        {sendingVideo ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Mail className="w-3 h-3 mr-1" />}
+                                        {sendingVideo ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Send className="w-3 h-3 mr-1" />}
                                         Enviar
                                     </Button>
                                 </div>
@@ -569,18 +569,18 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                     </div>
 
                     {/* ── Floating Quick Actions Bar ── */}
-                    <div className="flex-none border-b bg-background px-4 py-2.5">
-                        <div className="flex items-center gap-2">
+                    <div className="flex-none border-b bg-background px-3 py-2.5">
+                        <div className="flex items-center gap-1.5">
                             <button
                                 onClick={handleWhatsApp}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-600 text-white text-xs font-bold active:scale-95 transition-transform"
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-green-600 text-white text-xs font-bold active:scale-95 transition-transform"
                             >
                                 <Share2 className="w-3.5 h-3.5" />
-                                WhatsApp
+                                <span className="hidden xs:inline">WhatsApp</span>
                             </button>
                             <a
                                 href={`tel:${lead.phone}`}
-                                className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 text-blue-600 active:scale-95 transition-transform"
+                                className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-50 text-blue-600 active:scale-95 transition-transform shrink-0"
                             >
                                 <Phone className="w-4 h-4" />
                             </a>
@@ -588,24 +588,37 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                 <button
                                     onClick={handleResendPhoto}
                                     disabled={sendingPhoto}
-                                    className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-600 text-white active:scale-95 transition-transform disabled:opacity-50"
+                                    className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-primary-foreground active:scale-95 transition-transform disabled:opacity-50 shrink-0"
+                                    title="Reenviar imagen por email"
                                 >
-                                    {sendingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    {sendingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                                </button>
+                            )}
+                            {isVideoCompleted && (
+                                <button
+                                    onClick={handleSendVideo}
+                                    disabled={sendingVideo}
+                                    className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-primary-foreground active:scale-95 transition-transform disabled:opacity-50 shrink-0"
+                                    title="Reenviar video por email"
+                                >
+                                    {sendingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <MonitorPlay className="w-4 h-4" />}
                                 </button>
                             )}
                             <a
                                 href={`mailto:${lead.email}`}
-                                className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-50 text-purple-600 active:scale-95 transition-transform"
+                                className="flex items-center justify-center w-9 h-9 rounded-xl bg-secondary text-secondary-foreground active:scale-95 transition-transform shrink-0"
+                                title="Enviar email"
                             >
                                 <Mail className="w-4 h-4" />
                             </a>
                             <button
                                 onClick={handleMarkContacted}
                                 disabled={loadingAction || lead.status === "contacted"}
-                                className={`flex items-center justify-center w-10 h-10 rounded-xl active:scale-95 transition-transform ${lead.status === "contacted"
+                                className={`flex items-center justify-center w-9 h-9 rounded-xl active:scale-95 transition-transform shrink-0 ${lead.status === "contacted"
                                     ? "bg-green-50 text-green-600"
                                     : "bg-yellow-50 text-yellow-600"
                                     }`}
+                                title={lead.status === "contacted" ? "Ya contactado" : "Marcar contactado"}
                             >
                                 {loadingAction ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                             </button>
@@ -982,7 +995,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
 
                                     {generation && (
                                         <Button
-                                            className="w-full bg-purple-600 hover:bg-purple-700 font-bold text-white"
+                                            className="w-full bg-primary hover:bg-primary/90 font-bold text-primary-foreground"
                                             size="lg"
                                             onClick={handleResendPhoto}
                                             disabled={sendingPhoto}
@@ -993,6 +1006,22 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                                 <Send className="w-4 h-4 mr-2" />
                                             )}
                                             {sendingPhoto ? "Enviando..." : "Reenviar Imagen por Email"}
+                                        </Button>
+                                    )}
+
+                                    {isVideoCompleted && (
+                                        <Button
+                                            className="w-full bg-zinc-800 hover:bg-zinc-700 font-bold text-white"
+                                            size="lg"
+                                            onClick={handleSendVideo}
+                                            disabled={sendingVideo}
+                                        >
+                                            {sendingVideo ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <MonitorPlay className="w-4 h-4 mr-2" />
+                                            )}
+                                            {sendingVideo ? "Enviando..." : "Reenviar Video por Email"}
                                         </Button>
                                     )}
 
@@ -1207,21 +1236,22 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                                 <Button
                                                     size="sm"
                                                     variant="secondary"
-                                                    className="h-8 rounded-full bg-green-600 hover:bg-green-700 border-none text-white text-xs font-bold shadow-lg"
+                                                    className="h-8 rounded-full bg-primary hover:bg-primary/90 border-none text-primary-foreground text-xs font-bold shadow-lg"
                                                     onClick={handleSendVideo}
                                                     disabled={sendingVideo}
                                                 >
                                                     {sendingVideo ? (
                                                         <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
                                                     ) : (
-                                                        <Mail className="w-3.5 h-3.5 mr-1.5" />
+                                                        <Send className="w-3.5 h-3.5 mr-1.5" />
                                                     )}
-                                                    Enviar por Email
+                                                    <span className="hidden sm:inline">Enviar por Email</span>
+                                                    <span className="sm:hidden">Enviar</span>
                                                 </Button>
                                                 <Button
                                                     size="sm"
                                                     variant="secondary"
-                                                    className="h-8 rounded-full bg-black/50 backdrop-blur-md border-white/10 text-xs"
+                                                    className="h-8 rounded-full bg-black/50 backdrop-blur-md border-white/10 text-white text-xs"
                                                     onClick={() => setViewMode("images")}
                                                 >
                                                     Cerrar Video
