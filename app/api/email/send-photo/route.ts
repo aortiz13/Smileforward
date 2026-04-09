@@ -27,8 +27,13 @@ export async function POST(req: NextRequest) {
         }
 
         // Download image — try watermarked version first, fallback to original
-        const imagePath = imageUrl.split('/').pop();
-        const watermarkedPath = imagePath.replace('.jpg', '_watermarked.jpg');
+        // Extract path after bucket name (handles full URLs and relative paths)
+        let imagePath = imageUrl;
+        const generatedIdx = imageUrl.indexOf('/generated/');
+        if (generatedIdx !== -1) {
+            imagePath = imageUrl.substring(generatedIdx + '/generated/'.length);
+        }
+        const watermarkedPath = imagePath.replace(/\.(jpg|png)$/i, '_watermarked.jpg');
 
         let imageBuffer: Buffer;
 
