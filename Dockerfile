@@ -45,6 +45,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Accept self-signed certificates from reverse proxy (Easypanel/Traefik)
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
