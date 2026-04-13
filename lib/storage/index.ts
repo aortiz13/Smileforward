@@ -57,9 +57,19 @@ function getS3Client(): S3Client {
 
 /**
  * Get the public URL for a file.
- * Uses MINIO_PUBLIC_URL for externally accessible URLs.
+ * Returns a proxy URL through the app to avoid CORS issues
+ * when MinIO is on a different domain.
  */
 export function getPublicUrl(bucket: string, key: string): string {
+    // Use app proxy to avoid CORS: /api/storage/{bucket}/{key}
+    const appUrl = process.env.NEXTAUTH_URL || process.env.APP_URL || '';
+    return `${appUrl}/api/storage/${bucket}/${key}`;
+}
+
+/**
+ * Get the direct MinIO URL for a file (server-side use only).
+ */
+export function getDirectUrl(bucket: string, key: string): string {
     const publicUrl = process.env.MINIO_PUBLIC_URL || process.env.MINIO_ENDPOINT;
     return `${publicUrl}/${bucket}/${key}`;
 }
@@ -237,6 +247,7 @@ export const storage = {
     listFiles,
     fileExists,
     getPublicUrl,
+    getDirectUrl,
 };
 
 export default storage;
