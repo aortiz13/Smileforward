@@ -30,12 +30,12 @@ const stripBase64Prefix = (base64: string): string => {
 
 /**
  * Get the base URL for internal API calls.
- * In production, this resolves to the app's own URL.
+ * Always uses localhost since these are server-to-server calls within
+ * the same Next.js process — no need to go through the reverse proxy.
  */
 function getApiBaseUrl(): string {
-    // Use NEXTAUTH_URL or APP_URL for server-side calls
-    const appUrl = process.env.NEXTAUTH_URL || process.env.APP_URL || 'http://localhost:3000';
-    return appUrl;
+    const port = process.env.PORT || '3000';
+    return `http://localhost:${port}`;
 }
 
 // Gatekeeper
