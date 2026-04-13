@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
         let imageBase64 = image_base64;
 
         if (!imageBase64 && image_path) {
-            const buffer = await storage.downloadFileAsBuffer('scans', image_path);
+            const buffer = await storage.downloadFileAsBuffer('uploads', image_path);
             imageBase64 = buffer.toString('base64');
         }
 
