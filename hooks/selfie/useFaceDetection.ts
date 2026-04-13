@@ -48,7 +48,9 @@ export const useFaceDetection = (
         if (
             !faceLandmarkerRef.current ||
             !videoRef.current ||
-            videoRef.current.readyState !== 4
+            videoRef.current.readyState !== 4 ||
+            videoRef.current.videoWidth === 0 ||
+            videoRef.current.videoHeight === 0
         ) {
             requestRef.current = requestAnimationFrame(detectFace);
             return;
