@@ -14,6 +14,8 @@ import {
     HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
+import https from 'https';
 
 // Singleton S3 client
 let s3: S3Client | null = null;
@@ -30,6 +32,15 @@ function getS3Client(): S3Client {
             );
         }
 
+        // Create custom HTTPS agent to handle self-signed certificates
+        // (common in Easypanel/Traefik-proxied MinIO deployments)
+        const isHttps = endpoint.startsWith('https');
+        const requestHandler = isHttps
+            ? new NodeHttpHandler({
+                httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+            })
+            : undefined;
+
         s3 = new S3Client({
             endpoint,
             region: process.env.MINIO_REGION || 'us-east-1',
@@ -38,6 +49,7 @@ function getS3Client(): S3Client {
                 secretAccessKey: secretKey,
             },
             forcePathStyle: true, // Required for MinIO
+            ...(requestHandler && { requestHandler }),
         });
     }
     return s3;
