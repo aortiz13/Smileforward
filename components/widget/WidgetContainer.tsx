@@ -41,7 +41,9 @@ export default function WidgetContainer(props: WidgetContainerProps) {
                 if (childBottom > maxBottom) maxBottom = childBottom;
             });
             // Fallback to scrollHeight if querySelectorAll gives 0
-            const height = Math.ceil(maxBottom > 0 ? maxBottom : Math.max(el.scrollHeight, el.offsetHeight));
+            const measured = Math.ceil(maxBottom > 0 ? maxBottom : Math.max(el.scrollHeight, el.offsetHeight));
+            // Add safety buffer to prevent clipping from measurement discrepancies
+            const height = measured + 50;
             // Only send if height actually changed
             if (height > 0 && Math.abs(height - lastSentHeight) > 2) {
                 lastSentHeight = height;
