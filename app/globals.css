@@ -196,3 +196,15 @@
     overflow-x: clip;
   }
 }
+
+/* ── Embed Mode Overrides ─────────────────────────────────
+   When the widget is embedded in an iframe, remove all fixed height
+   and overflow constraints so the content flows naturally and the
+   postMessage auto-resize can measure the true height.
+*/
+[data-embed="true"] main > div,
+[data-embed="true"] main > div > div {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}

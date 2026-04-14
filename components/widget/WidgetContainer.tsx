@@ -28,18 +28,51 @@ export default function WidgetContainer(props: WidgetContainerProps) {
         if (!isEmbedded || !containerRef.current) return;
 
         const sendHeight = () => {
-            const height = containerRef.current?.scrollHeight ?? 0;
-            window.parent.postMessage({ type: "smileforward-resize", height }, "*");
+            const el = containerRef.current;
+            if (!el) return;
+            // Use the maximum of scrollHeight and offsetHeight
+            const height = Math.max(el.scrollHeight, el.offsetHeight);
+            if (height > 0) {
+                window.parent.postMessage({ type: "smileforward-resize", height }, "*");
+            }
         };
 
         // Observe size changes
-        const observer = new ResizeObserver(() => sendHeight());
-        observer.observe(containerRef.current);
+        const resizeObserver = new ResizeObserver(() => {
+            // Small delay to let layout settle
+            setTimeout(sendHeight, 50);
+        });
+        resizeObserver.observe(containerRef.current);
 
-        // Also send on initial render and step changes
+        // Also observe DOM mutations (new children, class changes)
+        const mutationObserver = new MutationObserver(() => {
+            setTimeout(sendHeight, 100);
+        });
+        mutationObserver.observe(containerRef.current, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+        });
+
+        // Polling as backup (every 500ms for 10s after step change)
+        let pollCount = 0;
+        const pollInterval = setInterval(() => {
+            sendHeight();
+            pollCount++;
+            if (pollCount >= 20) clearInterval(pollInterval);
+        }, 500);
+
+        // Also send on initial render
         sendHeight();
+        // And after a small delay for animations
+        setTimeout(sendHeight, 300);
 
-        return () => observer.disconnect();
+        return () => {
+            resizeObserver.disconnect();
+            mutationObserver.disconnect();
+            clearInterval(pollInterval);
+        };
     }, [isEmbedded, state.step]);
 
     const {
@@ -58,6 +91,7 @@ export default function WidgetContainer(props: WidgetContainerProps) {
     return (
         <div
             ref={containerRef}
+            data-embed={isEmbedded ? "true" : undefined}
             className={`relative w-full bg-white dark:bg-zinc-950 flex flex-col shadow-sm ${
                 isEmbedded
                     ? "min-h-[500px] h-auto overflow-visible border-0 rounded-none"
