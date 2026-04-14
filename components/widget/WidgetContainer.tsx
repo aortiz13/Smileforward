@@ -32,8 +32,16 @@ export default function WidgetContainer(props: WidgetContainerProps) {
         const sendHeight = () => {
             const el = containerRef.current;
             if (!el) return;
-            // Measure the container's true content height
-            const height = Math.max(el.scrollHeight, el.offsetHeight);
+            const containerTop = el.getBoundingClientRect().top;
+            // Find the true bottom by checking all direct children
+            let maxBottom = 0;
+            el.querySelectorAll(':scope > *').forEach(child => {
+                const childRect = child.getBoundingClientRect();
+                const childBottom = childRect.bottom - containerTop;
+                if (childBottom > maxBottom) maxBottom = childBottom;
+            });
+            // Fallback to scrollHeight if querySelectorAll gives 0
+            const height = Math.ceil(maxBottom > 0 ? maxBottom : Math.max(el.scrollHeight, el.offsetHeight));
             // Only send if height actually changed
             if (height > 0 && Math.abs(height - lastSentHeight) > 2) {
                 lastSentHeight = height;
