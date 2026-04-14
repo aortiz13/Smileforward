@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
                             prompt: scenarioPrompt,
                             image: { bytesBase64Encoded: sceneImgBase64, mimeType: sceneImgMimeType }
                         }],
-                        parameters: { sampleCount: 1, aspectRatio: "9:16", resolution: "1080p", durationSeconds: 8, negativePrompt }
+                        parameters: { sampleCount: 1, aspectRatio: "9:16", personGeneration: "allow_adult", resolution: "1080p", durationSeconds: 8, negativePrompt }
                     })
                 });
 
