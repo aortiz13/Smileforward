@@ -1,6 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useWidgetState } from "./useWidgetState";
 import { LoadingOverlay } from "./LoadingOverlay";
 import type { WidgetContainerProps } from "./types";
@@ -17,6 +19,28 @@ import { SuccessStep } from "./steps/SuccessStep";
 
 export default function WidgetContainer(props: WidgetContainerProps) {
     const state = useWidgetState(props);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const searchParams = useSearchParams();
+    const isEmbedded = searchParams.get("embed") === "widget";
+
+    // Send height to parent window for iframe auto-resize
+    useEffect(() => {
+        if (!isEmbedded || !containerRef.current) return;
+
+        const sendHeight = () => {
+            const height = containerRef.current?.scrollHeight ?? 0;
+            window.parent.postMessage({ type: "smileforward-resize", height }, "*");
+        };
+
+        // Observe size changes
+        const observer = new ResizeObserver(() => sendHeight());
+        observer.observe(containerRef.current);
+
+        // Also send on initial render and step changes
+        sendHeight();
+
+        return () => observer.disconnect();
+    }, [isEmbedded, state.step]);
 
     const {
         step, setStep, isVerified, setIsVerified,
@@ -32,7 +56,14 @@ export default function WidgetContainer(props: WidgetContainerProps) {
     } = state;
 
     return (
-        <div className="relative w-full min-h-[100dvh] h-[100dvh] bg-white dark:bg-zinc-950 flex flex-col overflow-y-auto md:overflow-hidden rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-sm">
+        <div
+            ref={containerRef}
+            className={`relative w-full bg-white dark:bg-zinc-950 flex flex-col shadow-sm ${
+                isEmbedded
+                    ? "min-h-[500px] h-auto overflow-visible border-0 rounded-none"
+                    : "min-h-[100dvh] h-[100dvh] overflow-hidden rounded-[2rem] border border-zinc-200 dark:border-zinc-800"
+            }`}
+        >
             {/* Loading Overlay */}
             <LoadingOverlay
                 visible={isSubmittingPhoto || isSubmittingVideo}
@@ -49,7 +80,7 @@ export default function WidgetContainer(props: WidgetContainerProps) {
             </header>
 
             {/* Main Content */}
-            <main className="md:flex-1 md:min-h-0 overflow-visible md:overflow-hidden relative z-10 flex flex-col">
+            <main className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden relative z-10 flex flex-col">
                 {!isVerified ? (
                     <VerificationStep onVerified={() => { setIsVerified(true); setStep("LEAD_FORM"); }} />
                 ) : (
