@@ -61,6 +61,46 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
     const [sendingPhoto, setSendingPhoto] = useState(false);
     const [mobileTab, setMobileTab] = useState<"info" | "video" | "gestion">("info");
 
+    // ── Browser Notification helpers ─────────────────────────────────────
+    const notificationSoundRef = useRef<HTMLAudioElement | null>(null);
+
+    // Request notification permission on first render
+    useEffect(() => {
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().then(perm => {
+                console.log('[Notification] Permission:', perm);
+            });
+        }
+        // Pre-create audio element for notification sound
+        if (typeof window !== 'undefined' && !notificationSoundRef.current) {
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1eXGBkamtzd350b2ZfWFVTU1dcY2x1fYOIioyKhoB5cWliXFpbX2VsdHuBhYmLjIuJhX94cWlhW1lZXWNqcnl/g4eKi4uKiIR+d3BpYlxaWl5ka3J5f4OHiouLioiEfndwamNdW1teZGtzeYCEiIuMi4qIhH53cGpiXVtbX2VscnqAhYmLjIuJh4N9dnBqY11bW19la3N6gIWJi4yLioiDfXZvaWNdW1tfZGtzeoGFiYuMi4qIg312b2ljXVtbX2Rrc3qBhYmLjIuKiIN9dm9pY11bW19ka3N6gYWJi4yLioiDfXZwamNeXFxgZm10e4GGiYuLioiEfnhxamRfXV1hZ250e4KGiouLioiFf3hxamRfXV1hZm10fIKHiouLioiFgHlya2RfXl1hZm11fIKHiouLioiFgHlya2VgXl5hZm11fIKHiouLioiFgHlya2VgXl5hZm51fIKH');
+            audio.volume = 0.5;
+            notificationSoundRef.current = audio;
+        }
+    }, []);
+
+    const sendBrowserNotification = useCallback((title: string, body: string, isError = false) => {
+        // Play notification sound
+        try {
+            notificationSoundRef.current?.play().catch(() => {});
+        } catch (_) {}
+
+        // Send native browser notification
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification(title, {
+                body,
+                icon: isError ? '❌' : '🎬',
+                badge: '/favicon.ico',
+                tag: 'video-generation',
+                requireInteraction: true,
+            });
+            notification.onclick = () => {
+                window.focus();
+                notification.close();
+            };
+        }
+    }, []);
+
     // Reset simple states when lead changes
     useEffect(() => {
         if (open) {
@@ -186,6 +226,10 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                             setVideoGen(data);
                             setViewMode("video");
                             toast.success("¡Vídeo generado con éxito! 🎉");
+                            sendBrowserNotification(
+                                '🎬 ¡Video listo!',
+                                `El video de ${lead?.name || 'el lead'} se generó con éxito. Haz clic para verlo.`
+                            );
                             onLeadUpdated?.();
                         }
                     }, 800);
@@ -203,6 +247,11 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                     const errorMsg = data.error?.message || data.metadata?.error?.message || "Error desconocido";
                     setErrorMessage(errorMsg);
                     toast.error("Error al generar vídeo");
+                    sendBrowserNotification(
+                        '❌ Error en video',
+                        `No se pudo generar el video de ${lead?.name || 'el lead'}. ${errorMsg}`,
+                        true
+                    );
                     onLeadUpdated?.();
                 } else {
                     console.log(`[VideoDebug] Still processing... (Status: ${data?.status})`);
