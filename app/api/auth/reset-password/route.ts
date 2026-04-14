@@ -59,7 +59,8 @@ export async function POST(req: NextRequest) {
                     <p>Hola ${user.name || ''},</p>
                     <p>Tu contraseña ha sido restablecida. Tu nueva contraseña temporal es:</p>
                     <p style="font-size: 18px; font-weight: bold; background: #f0f0f0; padding: 12px; border-radius: 6px; text-align: center;">${tempPassword}</p>
-                    <p>Por favor, <a href="${origin}/login">inicia sesión</a> y cambia tu contraseña desde el panel de administración.</p>
+                    <p>Por favor, <a href="${origin}/login">inicia sesión</a> con esta contraseña temporal.</p>
+                    <p>Una vez dentro, puedes cambiar tu contraseña desde <a href="${origin}/administracion/update-password">este enlace</a>.</p>
                     <p><small>Si no solicitaste este cambio, contacta al administrador inmediatamente.</small></p>
                 `,
             });

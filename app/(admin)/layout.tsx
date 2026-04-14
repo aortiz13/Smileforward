@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, Users, Settings, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Users, Settings, LogOut, Menu, KeyRound } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
@@ -85,6 +85,16 @@ export default function AdminLayout({
                         <span>Configuración</span>
                     </Link>
                 )}
+
+                {/* Change Password: All roles */}
+                <Link
+                    href="/administracion/update-password"
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${pathname === '/administracion/update-password' ? 'bg-secondary text-primary font-medium' : 'hover:bg-secondary/50 text-foreground'}`}
+                >
+                    <KeyRound size={20} strokeWidth={1.5} />
+                    <span>Cambiar Contraseña</span>
+                </Link>
             </nav>
 
             <div className="p-4 border-t border-border">
