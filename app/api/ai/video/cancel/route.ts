@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
         // Update the generation status to cancelled
         await db.query(
-            "UPDATE generations SET status = 'cancelled', metadata = metadata || '{\"cancelled_at\": \"' || NOW()::text || '\"}' WHERE id = $1",
+            `UPDATE generations SET status = 'cancelled', metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('cancelled_at', NOW()::text) WHERE id = $1`,
             [generation_id]
         );
 
