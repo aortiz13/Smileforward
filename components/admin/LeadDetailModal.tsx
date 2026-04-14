@@ -244,7 +244,32 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                     generatingRef.current = false;
                     setGeneratingVideo(false);
 
-                    const errorMsg = data.error?.message || data.metadata?.error?.message || "Error desconocido";
+                    const rawError = data.error?.message || data.error || data.metadata?.error?.message || data.metadata?.error || "";
+                    const rawStr = typeof rawError === 'string' ? rawError : JSON.stringify(rawError);
+
+                    // Translate technical errors to user-friendly Spanish messages
+                    let errorMsg: string;
+                    if (rawStr.includes('audio') || rawStr.includes('safety') || rawStr.includes('RAI_FILTERED')) {
+                        errorMsg = "El filtro de seguridad de Google bloqueó la generación. Intenta con otro escenario o con una foto diferente.";
+                    } else if (rawStr.includes('RESOURCE_EXHAUSTED') || rawStr.includes('429') || rawStr.includes('quota')) {
+                        errorMsg = "Se alcanzó el límite de generaciones por ahora. Espera unos minutos e intenta de nuevo.";
+                    } else if (rawStr.includes('503') || rawStr.includes('UNAVAILABLE') || rawStr.includes('unavailable')) {
+                        errorMsg = "El servicio de generación de video está temporalmente fuera de línea. Intenta de nuevo en unos minutos.";
+                    } else if (rawStr.includes('No smile image') || rawStr.includes('No completed')) {
+                        errorMsg = "No se encontró la imagen de sonrisa. Genera primero la imagen antes de crear el video.";
+                    } else if (rawStr.includes('timeout') || rawStr.includes('DEADLINE')) {
+                        errorMsg = "La generación tardó demasiado tiempo. Intenta de nuevo.";
+                    } else if (rawStr.includes('could not create your video')) {
+                        errorMsg = "No se pudo crear el video con esta combinación. Prueba con otro escenario.";
+                    } else if (rawStr.includes('400') || rawStr.includes('INVALID')) {
+                        errorMsg = "Hubo un problema con la solicitud. Intenta con otra foto o escenario.";
+                    } else if (rawStr && rawStr !== '{}') {
+                        errorMsg = "Ocurrió un problema durante la generación. Intenta de nuevo o prueba con otro escenario.";
+                    } else {
+                        errorMsg = "La generación no se completó. Intenta de nuevo con otro escenario.";
+                    }
+
+                    console.error('[VideoDebug] Raw error:', rawStr, '→ User message:', errorMsg);
                     setErrorMessage(errorMsg);
                     toast.error("Error al generar vídeo");
                     sendBrowserNotification(
