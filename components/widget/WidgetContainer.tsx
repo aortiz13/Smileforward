@@ -32,13 +32,9 @@ export default function WidgetContainer(props: WidgetContainerProps) {
         const sendHeight = () => {
             const el = containerRef.current;
             if (!el) return;
-            // Measure from multiple sources to get the true full height
-            const elHeight = Math.max(el.scrollHeight, el.offsetHeight, el.getBoundingClientRect().height);
-            const bodyHeight = document.body.scrollHeight;
-            const docHeight = document.documentElement.scrollHeight;
-            // Use the maximum of all measurements + safety buffer
-            const height = Math.max(elHeight, bodyHeight, docHeight) + 40;
-            // Only send if height actually changed (avoid infinite loops)
+            // Measure the container's true content height
+            const height = Math.max(el.scrollHeight, el.offsetHeight);
+            // Only send if height actually changed
             if (height > 0 && Math.abs(height - lastSentHeight) > 2) {
                 lastSentHeight = height;
                 window.parent.postMessage({ type: "smileforward-resize", height }, "*");
@@ -47,12 +43,9 @@ export default function WidgetContainer(props: WidgetContainerProps) {
 
         // Observe size changes
         const resizeObserver = new ResizeObserver(() => {
-            // Small delay to let layout settle
             setTimeout(sendHeight, 50);
         });
         resizeObserver.observe(containerRef.current);
-        // Also observe body for cases where content overflows the container
-        resizeObserver.observe(document.body);
 
         // Also observe DOM mutations (new children, class changes)
         const mutationObserver = new MutationObserver(() => {
