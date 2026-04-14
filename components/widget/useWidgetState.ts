@@ -453,9 +453,6 @@ export function useWidgetState(props: WidgetContainerProps = {}) {
             if (response.ok) {
                 setIsClinicalRequestSent(true);
                 setStep("CLINICAL_REQUEST_SUCCESS");
-                toast.success("¡Solicitud enviada!", {
-                    description: "Revisa tu correo para confirmar los detalles."
-                });
             } else {
                 throw new Error("Fallo al enviar solicitud");
             }
