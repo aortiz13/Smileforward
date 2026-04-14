@@ -218,7 +218,10 @@ export default function WidgetContainer(props: WidgetContainerProps) {
             </main>
 
             {/* Developer Attribution */}
-            <div className="absolute bottom-1 md:bottom-2 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-4 z-30 opacity-60 pointer-events-none select-none">
+            <div className={isEmbedded
+                ? "w-full text-center py-4 opacity-60 pointer-events-none select-none"
+                : "absolute bottom-1 md:bottom-2 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-4 z-30 opacity-60 pointer-events-none select-none"
+            }>
                 <span className="text-[9px] uppercase tracking-[0.1em] text-zinc-400 dark:text-zinc-500 font-medium">
                     Desarrollado por Judez-Logic
                 </span>
