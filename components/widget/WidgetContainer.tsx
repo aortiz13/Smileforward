@@ -32,7 +32,7 @@ export default function WidgetContainer(props: WidgetContainerProps) {
     } = state;
 
     return (
-        <div className="relative w-full min-h-[100dvh] h-[100dvh] bg-white dark:bg-zinc-950 flex flex-col overflow-hidden rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-sm">
+        <div className="relative w-full min-h-[100dvh] h-[100dvh] bg-white dark:bg-zinc-950 flex flex-col overflow-y-auto md:overflow-hidden rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-sm">
             {/* Loading Overlay */}
             <LoadingOverlay
                 visible={isSubmittingPhoto || isSubmittingVideo}
@@ -49,7 +49,7 @@ export default function WidgetContainer(props: WidgetContainerProps) {
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden relative z-10 flex flex-col">
+            <main className="md:flex-1 md:min-h-0 overflow-visible md:overflow-hidden relative z-10 flex flex-col">
                 {!isVerified ? (
                     <VerificationStep onVerified={() => { setIsVerified(true); setStep("LEAD_FORM"); }} />
                 ) : (
