@@ -202,9 +202,21 @@
    and overflow constraints so the content flows naturally and the
    postMessage auto-resize can measure the true height.
 */
+[data-embed="true"],
+[data-embed="true"] main,
 [data-embed="true"] main > div,
-[data-embed="true"] main > div > div {
+[data-embed="true"] main > div > div,
+[data-embed="true"] main > div > div > div {
   height: auto !important;
   max-height: none !important;
+  overflow: visible !important;
+  min-height: 0 !important;
+}
+
+/* Ensure html/body don't clip when inside an iframe */
+html:has([data-embed="true"]),
+html:has([data-embed="true"]) body {
+  height: auto !important;
+  min-height: 0 !important;
   overflow: visible !important;
 }

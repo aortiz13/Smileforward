@@ -27,12 +27,20 @@ export default function WidgetContainer(props: WidgetContainerProps) {
     useEffect(() => {
         if (!isEmbedded || !containerRef.current) return;
 
+        let lastSentHeight = 0;
+
         const sendHeight = () => {
             const el = containerRef.current;
             if (!el) return;
-            // Use the maximum of scrollHeight and offsetHeight
-            const height = Math.max(el.scrollHeight, el.offsetHeight);
-            if (height > 0) {
+            // Measure from multiple sources to get the true full height
+            const elHeight = Math.max(el.scrollHeight, el.offsetHeight, el.getBoundingClientRect().height);
+            const bodyHeight = document.body.scrollHeight;
+            const docHeight = document.documentElement.scrollHeight;
+            // Use the maximum of all measurements + safety buffer
+            const height = Math.max(elHeight, bodyHeight, docHeight) + 40;
+            // Only send if height actually changed (avoid infinite loops)
+            if (height > 0 && Math.abs(height - lastSentHeight) > 2) {
+                lastSentHeight = height;
                 window.parent.postMessage({ type: "smileforward-resize", height }, "*");
             }
         };
@@ -43,6 +51,8 @@ export default function WidgetContainer(props: WidgetContainerProps) {
             setTimeout(sendHeight, 50);
         });
         resizeObserver.observe(containerRef.current);
+        // Also observe body for cases where content overflows the container
+        resizeObserver.observe(document.body);
 
         // Also observe DOM mutations (new children, class changes)
         const mutationObserver = new MutationObserver(() => {
@@ -55,23 +65,30 @@ export default function WidgetContainer(props: WidgetContainerProps) {
             attributeFilter: ['class', 'style'],
         });
 
-        // Polling as backup (every 500ms for 10s after step change)
+        // Polling as backup (every 300ms for 15s after step change)
         let pollCount = 0;
         const pollInterval = setInterval(() => {
             sendHeight();
             pollCount++;
-            if (pollCount >= 20) clearInterval(pollInterval);
-        }, 500);
+            if (pollCount >= 50) clearInterval(pollInterval);
+        }, 300);
 
         // Also send on initial render
         sendHeight();
-        // And after a small delay for animations
+        // And after delays for animations/layout settling
         setTimeout(sendHeight, 300);
+        setTimeout(sendHeight, 600);
+        setTimeout(sendHeight, 1000);
+
+        // Listen for window resize too
+        const handleResize = () => setTimeout(sendHeight, 100);
+        window.addEventListener('resize', handleResize);
 
         return () => {
             resizeObserver.disconnect();
             mutationObserver.disconnect();
             clearInterval(pollInterval);
+            window.removeEventListener('resize', handleResize);
         };
     }, [isEmbedded, state.step]);
 
