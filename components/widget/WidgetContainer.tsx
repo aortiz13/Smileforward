@@ -49,7 +49,7 @@ export default function WidgetContainer(props: WidgetContainerProps) {
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-hidden relative z-10 flex flex-col">
+            <main className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden relative z-10 flex flex-col">
                 {!isVerified ? (
                     <VerificationStep onVerified={() => { setIsVerified(true); setStep("LEAD_FORM"); }} />
                 ) : (

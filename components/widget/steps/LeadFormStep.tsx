@@ -46,7 +46,7 @@ export function LeadFormStep({
             key="form"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="h-full flex items-start justify-center p-4 md:p-6 pt-[10px] overflow-hidden"
+            className="md:h-full flex items-start justify-center p-4 pb-16 md:p-6 md:pb-6 pt-[10px] overflow-visible md:overflow-hidden"
         >
             <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-start">
                 {/* Left Column - PASO 1 Form */}
