@@ -71,25 +71,25 @@ export function ProcessingStep({ image, processStatus, phraseIndex, phrases }: P
                         label="Validación Biométrica"
                         icon={ScanFace}
                         active={processStatus === 'validating'}
-                        completed={['scanning', 'analyzing', 'designing', 'complete'].includes(processStatus)}
+                        completed={['scanning', 'analyzing', 'designing', 'aligning', 'complete'].includes(processStatus)}
                     />
                     <StatusItem
                         label="Escaneo Facial 3D"
                         icon={FileSearch}
                         active={processStatus === 'scanning'}
-                        completed={['analyzing', 'designing', 'complete'].includes(processStatus)}
+                        completed={['analyzing', 'designing', 'aligning', 'complete'].includes(processStatus)}
                     />
                     <StatusItem
                         label="Análisis Morfológico"
                         icon={Sparkles}
                         active={processStatus === 'analyzing'}
-                        completed={['designing', 'complete'].includes(processStatus)}
+                        completed={['designing', 'aligning', 'complete'].includes(processStatus)}
                     />
                     <StatusItem
                         label="Diseño Generativo"
                         icon={Wand2}
                         active={processStatus === 'designing'}
-                        completed={['complete'].includes(processStatus)}
+                        completed={['aligning', 'complete'].includes(processStatus)}
                     />
                 </div>
             </div>
