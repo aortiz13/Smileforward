@@ -195,7 +195,10 @@ export function LeadFormStep({
                                 <div className="p-3 bg-white dark:bg-zinc-800 shadow-sm rounded-full mb-1 group-hover:scale-110 transition-transform duration-500">
                                     <UploadCloud className="w-6 h-6 text-zinc-400 group-hover:text-black transition-colors" strokeWidth={1} />
                                 </div>
-                                <h3 className="text-lg font-serif text-black dark:text-white mb-0.5">Sube tu Selfie</h3>
+                                <h3 className="text-lg font-serif text-black dark:text-white mb-0.5">
+                                    <span className="hidden md:inline">Sube tu Selfie</span>
+                                    <span className="md:hidden">Sube o hazte una selfie</span>
+                                </h3>
                                 <p className="text-xs text-zinc-500 max-w-[180px] text-center px-4">Arrastra tu foto aquí o haz clic</p>
                                 <input
                                     ref={fileInputRef}
@@ -232,7 +235,7 @@ export function LeadFormStep({
                                 <Button
                                     variant="outline"
                                     onClick={onSelfieCapture}
-                                    className="w-full h-11 rounded-full border-zinc-200 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 text-sm font-medium"
+                                    className="hidden md:flex w-full h-11 rounded-full border-zinc-200 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 text-sm font-medium"
                                 >
                                     <ScanFace className="w-5 h-5 mr-2" />
                                     Hazte un selfie ahora
