@@ -28,11 +28,10 @@ export default function WidgetContainer(props: WidgetContainerProps) {
         if (!isEmbedded || !containerRef.current) return;
 
         const sendHeight = () => {
-            // Measure full document height — most reliable across all layouts
-            const docHeight = document.documentElement.scrollHeight;
-            const bodyHeight = document.body.scrollHeight;
-            const containerHeight = containerRef.current?.scrollHeight ?? 0;
-            const height = Math.max(docHeight, bodyHeight, containerHeight);
+            const el = containerRef.current;
+            if (!el) return;
+            // Use the maximum of scrollHeight and offsetHeight
+            const height = Math.max(el.scrollHeight, el.offsetHeight);
             if (height > 0) {
                 window.parent.postMessage({ type: "smileforward-resize", height }, "*");
             }
