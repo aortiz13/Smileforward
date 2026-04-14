@@ -303,6 +303,7 @@ export async function POST(req: NextRequest) {
                         sampleCount: 1,
                         aspectRatio: "9:16",
                         personGeneration: "allow_adult",
+                        generateAudio: false,
                         resolution: "1080p",
                         durationSeconds: 8,
                         negativePrompt,

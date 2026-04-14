@@ -52,7 +52,23 @@ export async function POST(req: NextRequest) {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`;
 
         const response = await fetch(endpoint);
-        if (!response.ok) throw new Error(`Google API Error: ${await response.text()}`);
+
+        // Handle transient Google API errors (503, 429, 500) gracefully
+        // Instead of crashing, return 'pending' so the frontend retries on the next poll
+        if (!response.ok) {
+            const errorBody = await response.text();
+            const isTransient = [500, 502, 503, 429].includes(response.status);
+
+            if (isTransient) {
+                console.warn(`[check-video] Transient Google API error (${response.status}), will retry on next poll: ${errorBody}`);
+                return NextResponse.json(
+                    { status: 'pending', id: generation_id, message: `Temporary API issue (${response.status}), retrying...` },
+                    { headers: corsHeaders }
+                );
+            }
+
+            throw new Error(`Google API Error: ${errorBody}`);
+        }
 
         const operation = await response.json();
 
