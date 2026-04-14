@@ -121,23 +121,23 @@ export async function POST(req: NextRequest) {
         const scenarios: Record<string, { description: string, details: string }> = {
             park: {
                 description: "Professional outdoor portrait in a vibrant green park with natural daylight.",
-                details: "- Location: \"Vibrant green park. Natural daylight. Green background.\"\n- Action: \"Laughing naturally and warmly. Gentle head tilting in joy.\""
+                details: "- Location: Vibrant green park. Natural daylight. Green background.\n- Action: Laughing naturally and warmly. Gentle head tilting in joy."
             },
             home: {
                 description: "Warm, cozy portrait in a family dining room with indoor lighting.",
-                details: "- Location: \"Warm family dining room. Indoor lighting.\"\n- Action: \"Smiling warmly or laughing gently. Continuous gentle movement.\""
+                details: "- Location: Warm family dining room. Indoor lighting.\n- Action: Smiling warmly or laughing gently. Continuous gentle movement."
             },
             office: {
                 description: "Professional office environment with bright corporative lighting.",
-                details: "- Location: \"Modern professional office. Bright windows. Corporate setting.\"\n- Action: \"Smiling professionally and confidently. Natural business interaction vibe.\""
+                details: "- Location: Modern professional office. Bright windows. Corporate setting.\n- Action: Smiling professionally and confidently. Natural business interaction vibe."
             },
             dinner: {
                 description: "Stylish portrait during a social dinner at a high-end restaurant with ambient lighting.",
-                details: "- Location: \"Elegant restaurant. Warm ambient lighting. Blurred social background.\"\n- Action: \"Holding a toast glass and laughing joyfully. High-end social aesthetic.\""
+                details: "- Location: Elegant restaurant. Warm ambient lighting. Blurred social background.\n- Action: Holding a toast glass and laughing joyfully. High-end social aesthetic."
             },
             beach: {
                 description: "Sunny portrait on a beautiful beach during vacation with golden-hour lighting.",
-                details: "- Location: \"Tropical beach. Ocean background. Golden hour sun.\"\n- Action: \"Smiling happily and relaxed. Vacation vibe. Wind gently in hair.\""
+                details: "- Location: Tropical beach. Ocean background. Golden hour sun.\n- Action: Smiling happily and relaxed. Vacation vibe. Wind gently in hair."
             }
         };
 
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
                 finalScenario = "automatic_home";
             } else {
                 sceneDescription = "Stylish portrait on an urban rooftop terrace with a city sunset background.";
-                scenarioDetails = "- Location: \"Stylish urban rooftop terrace. City sunset background.\"\n- Action: \"Holding a drink and laughing or smiling naturally. High-end social aesthetic.\"";
+                scenarioDetails = "- Location: Stylish urban rooftop terrace. City sunset background.\n- Action: Holding a drink and smiling naturally. High-end social aesthetic.";
                 finalScenario = "automatic_rooftop";
             }
             logStep('scenario', `✅ Automatic scenario resolved: "${finalScenario}" (ageRange="${ageRange}")`);
@@ -288,9 +288,9 @@ export async function POST(req: NextRequest) {
                 }
 
                 // ── C. VEO GENERATION ─────────────────────────────────────────
-                const baseInstructions = `- Subject: "The person from the input image."\n- Composition: "9:16 Vertical Portrait. FIXED CAMERA. NO ROTATION."\n- IMPORTANT: "Natural, warm facial expression that evolves gently. Warm, natural facial expression. Gentle head movement only. Eyes and cheeks express joy. Gentle, organic movement only. Maintain identical facial identity throughout."`;
-                const scenarioPrompt = `${baseInstructions}\n${scenarioDetails}\n- Style: "Cinematic, Photorealistic, 4k High Quality."\n- NOTE: The video must start INSTANTLY in the target location. Do NOT fade in from the input image background.`;
-                const negativePrompt = "talking, speaking, lip syncing, dialog, speech, distortion, morphing teeth, low quality, blurry, flashing pixels, jerky movement";
+                const baseInstructions = `- Subject: The person from the input image.\n- Composition: 9:16 Vertical Portrait. FIXED CAMERA. NO ROTATION.\n- IMPORTANT: Natural, warm facial expression that evolves gently. Gentle head movement only. Eyes and cheeks express joy. Gentle, organic movement only. Maintain identical facial identity throughout.\n- Audio: Silent scene. No talking, no dialogue, no background music. Near-silent environment.`;
+                const scenarioPrompt = `${baseInstructions}\n${scenarioDetails}\n- Style: Cinematic, Photorealistic, 4k High Quality.\n- NOTE: The video must start INSTANTLY in the target location. Do NOT fade in from the input image background.`;
+                const negativePrompt = "talking, speaking, lip syncing, dialog, dialogue, speech, singing, music, soundtrack, background music, ambient sound, sound effects, audio, voice, distortion, morphing teeth, low quality, blurry, flashing pixels, jerky movement";
 
                 const veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-fast-generate-preview:predictLongRunning?key=${apiKey}`;
 
@@ -303,7 +303,6 @@ export async function POST(req: NextRequest) {
                         sampleCount: 1,
                         aspectRatio: "9:16",
                         personGeneration: "allow_adult",
-                        generateAudio: false,
                         resolution: "1080p",
                         durationSeconds: 8,
                         negativePrompt,

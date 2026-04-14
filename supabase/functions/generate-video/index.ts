@@ -177,11 +177,11 @@ Deno.serve(async (req) => {
                 }
 
                 // C. Veo Generation
-                const baseInstructions = `- Subject: "The person from the input image."\n- Composition: "9:16 Vertical Portrait. FIXED CAMERA. NO ROTATION."\n- IMPORTANT: "The subject has a warm, natural expression that evolves gently. The smile should look organic, with natural movements of the lips and cheeks. The subject can transition from a gentle closed-mouth smile to a joyful open-mouth smile. ABSOLUTELY NO SPEECH or talking. The mouth must NOT move to form words, mumble, or lip-sync. Movement must be purely expressive and organic, maintaining identical dental structure and facial identity throughout."`;
+                const baseInstructions = `- Subject: The person from the input image.\n- Composition: 9:16 Vertical Portrait. FIXED CAMERA. NO ROTATION.\n- IMPORTANT: The subject has a warm, natural expression that evolves gently. The smile should look organic, with natural movements of the lips and cheeks. The subject can transition from a gentle closed-mouth smile to a joyful open-mouth smile. ABSOLUTELY NO SPEECH or talking. The mouth must NOT move to form words, mumble, or lip-sync. Movement must be purely expressive and organic, maintaining identical dental structure and facial identity throughout.\n- Audio: Silent scene. No talking, no dialogue, no background music. Near-silent environment.`;
 
-                const scenarioPrompt = `${baseInstructions}\n${scenarioDetails}\n- Style: "Cinematic, Photorealistic, 4k High Quality."\n- NOTE: The video must start INSTANTLY in the target location. Do NOT fade in from the input image background.`;
+                const scenarioPrompt = `${baseInstructions}\n${scenarioDetails}\n- Style: Cinematic, Photorealistic, 4k High Quality.\n- NOTE: The video must start INSTANTLY in the target location. Do NOT fade in from the input image background.`;
 
-                const negativePrompt = "talking, speech, lip syncing, articulating words, conversing, dialog, whispering, chewing, mumbling, aggressive jaw movement, speaking, uttering, morphing teeth, morphing face, distortion, glitchy dental structure, low quality, flashing pixels, jerky head movement";
+                const negativePrompt = "talking, speaking, lip syncing, dialog, dialogue, speech, singing, music, soundtrack, background music, ambient sound, sound effects, audio, voice, articulating words, conversing, whispering, chewing, mumbling, aggressive jaw movement, uttering, morphing teeth, morphing face, distortion, glitchy dental structure, low quality, flashing pixels, jerky head movement";
 
                 const veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-fast-generate-preview:predictLongRunning?key=${apiKey}`;
 
@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
                             prompt: scenarioPrompt,
                             image: { bytesBase64Encoded: sceneImgBase64, mimeType: sceneImgMimeType }
                         }],
-                        parameters: { sampleCount: 1, aspectRatio: "9:16", personGeneration: "allow_adult", generateAudio: false, resolution: "1080p", durationSeconds: 8, negativePrompt }
+                        parameters: { sampleCount: 1, aspectRatio: "9:16", personGeneration: "allow_adult", resolution: "1080p", durationSeconds: 8, negativePrompt }
                     })
                 });
 
