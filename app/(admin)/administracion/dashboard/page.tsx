@@ -47,9 +47,22 @@ export default async function DashboardPage() {
     );
     const chartData = chartResult.rows;
 
-    // Fetch Recent Activity
+    // Fetch Recent Activity (latest leads with generation status)
     const activityResult = await db.query(
-        'SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 5'
+        `SELECT 
+            l.id,
+            l.name,
+            l.email,
+            l.created_at,
+            l.status,
+            COUNT(g.id) FILTER (WHERE g.type = 'image' AND g.status = 'completed') as smile_count,
+            COUNT(g.id) FILTER (WHERE g.type = 'video' AND g.status = 'completed') as video_count,
+            COUNT(g.id) FILTER (WHERE g.type = 'video' AND g.status IN ('processing', 'processing_video', 'processing_video_veo', 'initializing')) as video_pending
+         FROM leads l
+         LEFT JOIN generations g ON g.lead_id = l.id
+         GROUP BY l.id, l.name, l.email, l.created_at, l.status
+         ORDER BY l.created_at DESC
+         LIMIT 8`
     );
     const recentActivity = activityResult.rows;
 
@@ -96,21 +109,58 @@ export default async function DashboardPage() {
                 <div className="p-0">
                     {recentActivity && recentActivity.length > 0 ? (
                         <ul className="divide-y divide-border">
-                            {recentActivity.map((log: any) => (
-                                <li key={log.id} className="p-4 hover:bg-muted/50 transition-colors">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-sm font-medium text-foreground">{log.action}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                {JSON.stringify(log.details)}
-                                            </p>
+                            {recentActivity.map((lead: any) => {
+                                const smiles = parseInt(lead.smile_count || '0');
+                                const videos = parseInt(lead.video_count || '0');
+                                const videoPending = parseInt(lead.video_pending || '0');
+
+                                let statusLabel = '📋 Nuevo lead registrado';
+                                let statusColor = 'text-blue-600';
+                                if (videos > 0) {
+                                    statusLabel = '🎬 Video generado';
+                                    statusColor = 'text-emerald-600';
+                                } else if (videoPending > 0) {
+                                    statusLabel = '⏳ Video en proceso';
+                                    statusColor = 'text-amber-600';
+                                } else if (smiles > 0) {
+                                    statusLabel = '😊 Smile generado';
+                                    statusColor = 'text-green-600';
+                                }
+
+                                const leadStatus = lead.status === 'contacted' ? '✅ Contactado'
+                                    : lead.status === 'converted' ? '🎉 Convertido'
+                                    : lead.status === 'rejected' ? '❌ Rechazado'
+                                    : '🕐 Pendiente';
+
+                                return (
+                                    <li key={lead.id} className="p-4 hover:bg-muted/50 transition-colors">
+                                        <div className="flex justify-between items-start">
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-semibold text-foreground">
+                                                    {lead.name || 'Sin nombre'}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {lead.email || 'Sin email'}
+                                                </p>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <span className={`text-xs font-medium ${statusColor}`}>
+                                                        {statusLabel}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {leadStatus}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                                {new Date(lead.created_at).toLocaleString('es-AR', {
+                                                    day: '2-digit', month: '2-digit', year: 'numeric',
+                                                    hour: '2-digit', minute: '2-digit'
+                                                })}
+                                            </span>
                                         </div>
-                                        <span className="text-xs text-muted-foreground">
-                                            {new Date(log.created_at).toLocaleString()}
-                                        </span>
-                                    </div>
-                                </li>
-                            ))}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     ) : (
                         <div className="p-6 text-center text-muted-foreground text-sm">
