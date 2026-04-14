@@ -620,7 +620,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                 <div className="relative h-full w-auto aspect-[9/16] rounded-xl overflow-hidden bg-black">
                                     <video
                                         key={videoGen.output_path}
-                                        src={`${storageBaseUrl}/generated/${videoGen.output_path}`}
+                                        src={`/api/storage/generated/${videoGen.output_path}`}
                                         className="w-full h-full object-contain"
                                         controls
                                         autoPlay
@@ -1298,7 +1298,7 @@ export function LeadDetailModal({ lead, open, onOpenChange, onLeadUpdated }: Lea
                                         <div className="relative h-[90%] w-auto aspect-[9/16] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black">
                                             <video
                                                 key={videoGen.output_path}
-                                                src={`${storageBaseUrl}/generated/${videoGen.output_path}`}
+                                                src={`/api/storage/generated/${videoGen.output_path}`}
                                                 className="w-full h-full object-contain"
                                                 controls
                                                 autoPlay
