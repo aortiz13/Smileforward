@@ -63,7 +63,7 @@ function HomeContent() {
   };
 
   return (
-    <div className={`flex flex-col min-h-screen font-sans ${isWidgetMode ? 'bg-transparent' : 'bg-white dark:bg-zinc-950'} text-foreground selection:bg-teal-100 selection:text-teal-900 transition-colors duration-500`}>
+    <div className={`flex flex-col font-sans ${isWidgetMode ? 'bg-transparent' : 'min-h-screen bg-white dark:bg-zinc-950'} text-foreground selection:bg-teal-100 selection:text-teal-900 transition-colors duration-500`}>
       {/* Header - Minimal & Premium */}
       {!embedMode && (
         <header className="fixed top-0 z-50 w-full bg-black/40 backdrop-blur-md border-b border-white/10 transition-all duration-300">
@@ -78,9 +78,9 @@ function HomeContent() {
         </header>
       )}
 
-      <main className={`flex-1 flex flex-col items-center ${isWidgetMode
-        ? 'justify-center p-0'
-        : 'justify-start pt-20 px-0 md:px-8 gap-12 md:gap-16 pb-12 md:pb-24'
+      <main className={`flex flex-col items-center ${isWidgetMode
+        ? 'p-0'
+        : 'flex-1 justify-start pt-20 px-0 md:px-8 gap-12 md:gap-16 pb-12 md:pb-24'
         }`}>
         {/* Intro Section - Hidden in Widget Mode */}
         {!isWidgetMode && (
@@ -100,14 +100,14 @@ function HomeContent() {
         )}
 
         {/* Floating Widget Container */}
-        <section className={`w-full ${isWidgetMode ? 'h-full' : 'mx-auto relative z-10'}`}>
+        <section className={`w-full ${isWidgetMode ? '' : 'mx-auto relative z-10'}`}>
           {/* Subtle premium glow behind widget - Hidden in Widget Mode */}
           {!isWidgetMode && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-tr from-teal-500/10 via-purple-500/5 to-transparent blur-3xl rounded-full opacity-60 pointer-events-none"></div>
           )}
 
-          <Card className={`${isWidgetMode ? 'border-none shadow-none rounded-none h-full bg-transparent' : 'relative border-0 md:border border-zinc-100 dark:border-zinc-800 shadow-none md:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden bg-white dark:bg-zinc-900 md:rounded-[2rem]'}`}>
-            <div className="p-0 h-full">
+          <Card className={`${isWidgetMode ? 'border-none shadow-none rounded-none bg-transparent' : 'relative border-0 md:border border-zinc-100 dark:border-zinc-800 shadow-none md:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden bg-white dark:bg-zinc-900 md:rounded-[2rem]'}`}>
+            <div className="p-0">
               <WidgetContainer />
             </div>
           </Card>
